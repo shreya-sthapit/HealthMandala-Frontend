@@ -1,0 +1,175 @@
+.doctor-appointments {
+  min-height: 100vh;
+  background: var(--light-bg);
+}
+
+.appointments-content {
+  padding: 2rem 5%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Filters */
+.appointments-filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-tabs {
+  display: flex;
+  background: var(--white);
+  border-radius: 10px;
+  padding: 0.25rem;
+}
+
+.filter-tab {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.filter-tab.active {
+  background: var(--primary-color);
+  color: var(--white);
+}
+
+.date-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--white);
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+}
+
+.date-filter input {
+  border: none;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+}
+
+/* Appointments Table */
+.appointments-table {
+  background: var(--white);
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+  padding: 1rem 1.5rem;
+  background: var(--light-bg);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-light);
+  text-transform: uppercase;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+  padding: 1rem 1.5rem;
+  align-items: center;
+  border-bottom: 1px solid #f1f1f1;
+  transition: background 0.3s;
+}
+
+.table-row:hover {
+  background: var(--light-bg);
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.patient-cell {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.patient-cell .avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.patient-cell .details h4 {
+  font-size: 0.95rem;
+  color: var(--text-dark);
+}
+
+.patient-cell .details p {
+  font-size: 0.8rem;
+  color: var(--text-light);
+}
+
+.status-cell .status {
+  padding: 0.3rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.status.pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status.confirmed {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status.completed {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.status.cancelled {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border: none;
+  transition: all 0.3s;
+}
+
+.action-btn.view {
+  background: var(--light-bg);
+  color: var(--text-dark);
+}
+
+.action-btn.complete {
+  background: var(--primary-color);
+  color: var(--white);
+}
+
+.action-btn.cancel {
+  background: #fee2e2;
+  color: #dc2626;
+}

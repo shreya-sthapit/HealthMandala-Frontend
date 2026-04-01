@@ -1,0 +1,49 @@
+/* Import base registration styles */
+@import '../PatientRegistration/Registration.css';
+
+/* Doctor-specific styles */
+.days-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.day-btn {
+  padding: 0.5rem 0.75rem;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.day-btn:hover {
+  border-color: var(--primary-color);
+}
+
+.day-btn.selected {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.upload-box.full-width {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 500px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .days-grid {
+    justify-content: center;
+  }
+}
