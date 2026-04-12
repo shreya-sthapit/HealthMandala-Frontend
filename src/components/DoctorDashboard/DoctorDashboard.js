@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './DoctorDashboard.css';
+import { requireApproval } from '../../utils/approvalCheck';
 
 const DoctorDashboard = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -30,7 +31,7 @@ const DoctorDashboard = () => {
       });
     }
 
-    // Fetch all dashboard data
+    // Check approval status and fetch dashboard data
     if (userData.id) {
       fetchDashboardData(userData.id);
     }
@@ -204,6 +205,14 @@ const DoctorDashboard = () => {
     // Redirect to landing page
     navigate('/');
   };
+
+  const handleProtectedAction = async (e, action) => {
+    e.preventDefault();
+    const approved = await requireApproval(doctor.id, 'doctor');
+    if (approved) {
+      action();
+    }
+  };
   
   const today = new Date();
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -295,7 +304,12 @@ const DoctorDashboard = () => {
             <div className="section-card">
               <h2>
                 Today's Appointments
-                <Link to="/doctor-appointments">View All</Link>
+                <a 
+                  href="/doctor-appointments"
+                  onClick={(e) => handleProtectedAction(e, () => navigate('/doctor-appointments'))}
+                >
+                  View All
+                </a>
               </h2>
               {loading ? (
                 <div className="loading-state">
@@ -335,18 +349,30 @@ const DoctorDashboard = () => {
             <div className="section-card">
               <h2>Quick Actions</h2>
               <div className="quick-actions-grid">
-                <Link to="/doctor-schedule" className="quick-action">
+                <a 
+                  href="/doctor-schedule" 
+                  className="quick-action"
+                  onClick={(e) => handleProtectedAction(e, () => navigate('/doctor-schedule'))}
+                >
                   <div className="icon">S</div>
                   <span>My Schedule</span>
-                </Link>
-                <Link to="/doctor-patients" className="quick-action">
+                </a>
+                <a 
+                  href="/doctor-patients" 
+                  className="quick-action"
+                  onClick={(e) => handleProtectedAction(e, () => navigate('/doctor-patients'))}
+                >
                   <div className="icon">P</div>
                   <span>Patients</span>
-                </Link>
-                <Link to="/doctor-appointments" className="quick-action">
+                </a>
+                <a 
+                  href="/doctor-appointments" 
+                  className="quick-action"
+                  onClick={(e) => handleProtectedAction(e, () => navigate('/doctor-appointments'))}
+                >
                   <div className="icon">E</div>
                   <span>Appointments</span>
-                </Link>
+                </a>
                 <Link to="/profile" className="quick-action">
                   <div className="icon">Pr</div>
                   <span>Profile</span>
