@@ -51,6 +51,10 @@ const Navbar = () => {
 
   const isActive = (href) => path === href || path.startsWith(href + '/');
 
+  // Redirect logged-in patients away from auth pages
+  const isAuthPage = ['/login', '/signup', '/auth'].includes(path);
+  if (isAuthPage && user) return null;
+
   // Avatar: initials from name
   const initials = user
     ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase()
