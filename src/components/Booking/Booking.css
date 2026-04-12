@@ -1565,3 +1565,107 @@
     flex-direction: column;
   }
 }
+
+
+/* Token Information Section */
+.token-info-section {
+  margin-top: 2rem;
+}
+
+.token-info-card {
+  background: #f8f9fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1rem;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.info-row:last-of-type {
+  border-bottom: none;
+}
+
+.info-row .label {
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.info-row .value {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.info-row .value.highlight {
+  color: #10b981;
+  font-size: 1.125rem;
+}
+
+.info-note {
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
+  padding: 1rem;
+  margin-top: 1rem;
+  border-radius: 6px;
+}
+
+.info-note p {
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+  color: #1e40af;
+}
+
+.token-confirmation {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.confirm-text {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1rem;
+}
+
+.confirm-token-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 0.875rem 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+}
+
+.confirm-token-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
+}
+
+.confirm-token-btn:active {
+  transform: translateY(0);
+}
+
+.no-tokens {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.no-tokens p {
+  color: #dc2626;
+  font-weight: 500;
+  margin: 0;
+}
