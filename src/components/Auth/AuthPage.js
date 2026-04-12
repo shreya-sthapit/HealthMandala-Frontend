@@ -34,6 +34,7 @@ const AuthPage = () => {
   const [showLoginPwd, setShowLoginPwd] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [loginAttempts, setLoginAttempts] = useState(0);
 
   // Sign Up state
   const [signupData, setSignupData] = useState({
@@ -95,6 +96,7 @@ const AuthPage = () => {
         else navigate(redirectTo); // go to intended page or landing
       } else {
         setLoginError(data.error || 'Login failed. Please try again.');
+        setLoginAttempts(a => a + 1);
       }
     } catch {
       setLoginError('Unable to connect to server. Please try again.');
