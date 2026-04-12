@@ -50,9 +50,11 @@
   margin-bottom: 1.5rem;
 }
 
-.step {
+.step-indicator .step {
   width: 32px;
   height: 32px;
+  min-width: 32px;
+  min-height: 32px;
   border-radius: 50%;
   background: #e9ecef;
   color: #6b7280;
@@ -62,14 +64,17 @@
   font-weight: 600;
   font-size: 0.85rem;
   transition: all 0.3s;
+  padding: 0;
+  box-shadow: none;
+  flex-direction: row;
 }
 
-.step.active {
+.step-indicator .step.active {
   background: var(--primary-color);
   color: white;
 }
 
-.step.completed {
+.step-indicator .step.completed {
   background: #10b981;
   color: white;
 }

@@ -1,12 +1,20 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import '../Auth.css';
 import './Registration.css';
 
 const PersonalInfo = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  // Support both navigate state (from old flow) and query params (from email verification redirect)
   const existingData = location.state || {};
+  const userId = existingData.userId || searchParams.get('userId');
+  const firstName = existingData.firstName || searchParams.get('firstName') || '';
+  const lastName = existingData.lastName || searchParams.get('lastName') || '';
+  const email = existingData.email || searchParams.get('email') || '';
+  const role = existingData.role || searchParams.get('role') || 'patient';
 
   const [profilePreview, setProfilePreview] = useState(existingData.profilePreview || null);
   const [formData, setFormData] = useState({
@@ -52,7 +60,7 @@ const PersonalInfo = () => {
       return;
     }
     navigate('/register/address', {
-      state: { ...existingData, ...formData, profilePreview }
+      state: { ...existingData, ...formData, profilePreview, userId, firstName, lastName, email, role }
     });
   };
 

@@ -122,8 +122,8 @@ const NIDVerification = () => {
         }));
         localStorage.setItem('userRole', 'patient');
         
-        // Redirect to patient dashboard
-        navigate('/home');
+        // Redirect to landing page after registration
+        navigate('/');
       } else {
         setError(data.error || 'Registration failed. Please try again.');
       }
