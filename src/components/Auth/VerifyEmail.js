@@ -1,193 +1,167 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { auth } from '../config/firebase.ts';
-import { sendEmailVerification, onAuthStateChanged } from 'firebase/auth';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import './Auth.css';
 
 const VerifyEmail = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  // Passed via navigate state (from signup popup)
   const email = location.state?.email || '';
   const firstName = location.state?.firstName || '';
-  const lastName = location.state?.lastName || '';
-  const password = location.state?.password || '';
-  const role = location.state?.role || 'patient';
+
+  // Full registration data stored in sessionStorage for resend
+  const pendingData = JSON.parse(sessionStorage.getItem('pendingVerification') || '{}');
+
+  // Status from backend redirect after clicking link
+  const status = searchParams.get('status'); // 'invalid' | 'expired' | 'error' | 'already-verified'
 
   const [isResending, setIsResending] = useState(false);
-  const [resendMessage, setResendMessage] = useState('');
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState(''); // 'success' | 'error'
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
 
+  // Countdown for resend
   useEffect(() => {
     if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setCountdown(c => c - 1), 1000);
+      return () => clearTimeout(t);
     } else {
       setCanResend(true);
     }
   }, [countdown]);
 
+  // Show status messages from backend redirect
   useEffect(() => {
-    // Listen for auth state changes to check if email is verified
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Reload user to get latest emailVerified status
-        await user.reload();
-        if (user.emailVerified) {
-          // Register user in MongoDB
-          await registerUserInDB(user.uid);
-        }
-      }
-    });
-
-    return () => unsubscribe();
-  }, [navigate]);
-
-  const registerUserInDB = async (firebaseUid) => {
-    setIsRegistering(true);
-    try {
-      const response = await fetch('http://localhost:5001/api/auth/register/email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          email,
-          password,
-          role,
-          firebaseUid
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        // Redirect based on role
-        const redirectPath = role === 'doctor' ? '/doctor-register/personal' : '/register/personal';
-        navigate(redirectPath, { 
-          state: { 
-            role,
-            userId: data.user.id,
-            firstName,
-            lastName,
-            email
-          } 
-        });
-      } else {
-        setResendMessage(data.error || 'Registration failed. Please try again.');
-      }
-    } catch (error) {
-      console.error('Registration error:', error);
-      setResendMessage('Failed to complete registration. Please try again.');
-    } finally {
-      setIsRegistering(false);
+    if (status === 'expired') {
+      setMessage('Verification link has expired. Please request a new one.');
+      setMessageType('error');
+    } else if (status === 'invalid') {
+      setMessage('Invalid verification link. Please request a new one.');
+      setMessageType('error');
+    } else if (status === 'error') {
+      setMessage('Something went wrong. Please try again.');
+      setMessageType('error');
+    } else if (status === 'already-verified') {
+      setMessage('Email already verified. You can sign in.');
+      setMessageType('success');
     }
-  };
+  }, [status]);
 
-  const handleResendEmail = async () => {
+  const handleResend = async () => {
     if (!canResend) return;
-
+    const data = pendingData;
+    if (!data.email) {
+      setMessage('Cannot resend — registration data not found. Please sign up again.');
+      setMessageType('error');
+      return;
+    }
     setIsResending(true);
-    setResendMessage('');
-
+    setMessage('');
     try {
-      const user = auth.currentUser;
-      if (user) {
-        await sendEmailVerification(user);
-        setResendMessage('Verification email sent successfully!');
+      const res = await fetch('http://localhost:5001/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setMessage('Verification email resent! Check your inbox.');
+        setMessageType('success');
         setCountdown(60);
         setCanResend(false);
+      } else {
+        setMessage(result.error || 'Failed to resend. Please try again.');
+        setMessageType('error');
       }
-    } catch (error) {
-      console.error('Resend error:', error);
-      setResendMessage('Failed to resend email. Please try again.');
+    } catch {
+      setMessage('Failed to resend. Please check your connection.');
+      setMessageType('error');
     } finally {
       setIsResending(false);
     }
   };
 
-  const handleCheckVerification = async () => {
-    const user = auth.currentUser;
-    if (user) {
-      await user.reload();
-      if (user.emailVerified) {
-        await registerUserInDB(user.uid);
-      } else {
-        setResendMessage('Email not verified yet. Please check your inbox.');
-      }
-    }
-  };
-
   return (
     <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <Link to="/" className="auth-logo">
-            <img src="/logo.png" alt="HealthMandala" />
+      <div className="auth-split">
+        {/* Left Panel */}
+        <div className="auth-left">
+          <div className="auth-brand">
+            <img src="/logo.png" alt="HealthMandala" className="auth-brand-logo" />
             <span>HealthMandala</span>
-          </Link>
-          <div className="verify-icon">
-            <div className="email-icon">@</div>
           </div>
-          <h2>Verify Your Email</h2>
-          <p>
-            {firstName ? `Hi ${firstName}! ` : ''}We've sent a verification link to
-          </p>
-          <p className="email-highlight">{email}</p>
+          <div className="auth-left-content">
+            <h1>Almost<br/>There!</h1>
+            <p>Just one more step — verify your email to activate your account.</p>
+            <div className="auth-features">
+              <div className="auth-feature-item">
+                <svg className="auth-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Secure email verification</span>
+              </div>
+              <div className="auth-feature-item">
+                <svg className="auth-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Link expires in 24 hours</span>
+              </div>
+            </div>
+          </div>
+          <div className="auth-illustration">
+            <img src="/Middle Image.png" alt="Healthcare" />
+          </div>
         </div>
 
-        <div className="verify-content">
-          <div className="verify-steps">
-            <div className="verify-step">
-              <div className="step-number">1</div>
-              <p>Check your email inbox</p>
+        {/* Right Panel */}
+        <div className="auth-right">
+          <div className="auth-card">
+            <div className="auth-header">
+              <div className="email-icon">✉</div>
+              <h2>Verify Your Email</h2>
+              {firstName && <p>Hi {firstName}! We've sent a verification link to</p>}
+              {email && <p className="email-highlight">{email}</p>}
+              {!email && <p>Check your inbox for the verification link.</p>}
             </div>
-            <div className="verify-step">
-              <div className="step-number">2</div>
-              <p>Click the verification link</p>
+
+            <div className="verify-steps">
+              <div className="verify-step">
+                <div className="step-number">1</div>
+                <p>Check your email inbox (and spam folder)</p>
+              </div>
+              <div className="verify-step">
+                <div className="step-number">2</div>
+                <p>Click the "Verify Email" button in the email</p>
+              </div>
+              <div className="verify-step">
+                <div className="step-number">3</div>
+                <p>You'll be redirected to complete your profile</p>
+              </div>
             </div>
-            <div className="verify-step">
-              <div className="step-number">3</div>
-              <p>Come back and continue</p>
-            </div>
-          </div>
 
-          {resendMessage && (
-            <p className={`verify-message ${resendMessage.includes('success') ? 'success' : 'error'}`}>
-              {resendMessage}
-            </p>
-          )}
-
-          <button 
-            className="auth-submit" 
-            onClick={handleCheckVerification}
-            disabled={isRegistering}
-          >
-            {isRegistering ? 'Completing Registration...' : "I've Verified My Email"}
-          </button>
-
-          <div className="resend-section">
-            <p>Didn't receive the email?</p>
-            {canResend ? (
-              <button 
-                className="resend-btn"
-                onClick={handleResendEmail}
-                disabled={isResending}
-              >
-                {isResending ? 'Sending...' : 'Resend Verification Email'}
-              </button>
-            ) : (
-              <p className="countdown">Resend available in {countdown}s</p>
+            {message && (
+              <div className={`verify-message ${messageType}`}>
+                {message}
+              </div>
             )}
+
+            {email && (
+              <div className="resend-section">
+                <p>Didn't receive the email?</p>
+                {canResend ? (
+                  <button className="resend-btn" onClick={handleResend} disabled={isResending}>
+                    {isResending ? 'Sending...' : 'Resend Verification Email'}
+                  </button>
+                ) : (
+                  <p className="countdown">Resend available in <span>{countdown}s</span></p>
+                )}
+              </div>
+            )}
+
+            <p className="auth-footer" style={{ marginTop: '1.5rem' }}>
+              Wrong email? <Link to="/login">Go back</Link>
+            </p>
           </div>
         </div>
-
-        <p className="auth-footer">
-          Wrong email? <Link to="/signup">Go back</Link>
-        </p>
       </div>
     </div>
   );
