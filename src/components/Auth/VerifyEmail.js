@@ -23,6 +23,13 @@ const VerifyEmail = () => {
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
+  // Clear sessionStorage once verification is complete
+  useEffect(() => {
+    if (status && status !== 'error') {
+      sessionStorage.removeItem('pendingVerification');
+    }
+  }, [status]);
+
   // Countdown for resend
   useEffect(() => {
     if (countdown > 0) {
