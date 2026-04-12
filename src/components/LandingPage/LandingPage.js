@@ -200,7 +200,11 @@ const LandingPage = () => {
                   </div>
                   <h3>{doctor.name}</h3>
                   <p className="specialty">{doctor.specialty}</p>
-                  <p className="availability">Next available time: {doctor.availableTimeStart || 'N/A'}</p>
+        <p className="availability">
+                    {doctor.availableTimeStart && doctor.availableTimeEnd
+                      ? `Available: ${doctor.availableTimeStart} – ${doctor.availableTimeEnd}`
+                      : 'Schedule available on booking'}
+                  </p>
                   {isLoggedIn ? (
                     <button
                       className="btn btn-primary btn-small"
