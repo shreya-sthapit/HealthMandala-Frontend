@@ -1,12 +1,18 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import '../Auth.css';
 import './DoctorRegistration.css';
 
 const DoctorPersonalInfo = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const existingData = location.state || {};
+  const userId = existingData.userId || searchParams.get('userId');
+  const firstName = existingData.firstName || searchParams.get('firstName') || '';
+  const lastName = existingData.lastName || searchParams.get('lastName') || '';
+  const email = existingData.email || searchParams.get('email') || '';
+  const role = existingData.role || searchParams.get('role') || 'doctor';
 
   const [profilePreview, setProfilePreview] = useState(existingData.profilePreview || null);
   const [formData, setFormData] = useState({
@@ -44,7 +50,7 @@ const DoctorPersonalInfo = () => {
       return;
     }
     navigate('/doctor-register/professional', {
-      state: { ...existingData, ...formData, profilePreview }
+      state: { ...existingData, ...formData, profilePreview, userId, firstName, lastName, email, role }
     });
   };
 
