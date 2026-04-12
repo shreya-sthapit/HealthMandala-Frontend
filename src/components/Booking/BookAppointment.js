@@ -7,18 +7,22 @@ const BookAppointment = () => {
   const location = useLocation();
   const preSelectedDoctor = location.state?.preSelectedDoctor;
   
-  const [step, setStep] = useState(preSelectedDoctor ? 2 : 1); // Skip to step 2 if doctor is pre-selected
-  const [searchMode, setSearchMode] = useState('specialty'); // 'specialty' or 'browse'
+  const [step, setStep] = useState(preSelectedDoctor ? 2 : 1);
+  const [searchMode, setSearchMode] = useState('specialty');
   const [searchTerm, setSearchTerm] = useState('');
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [patientStatus] = useState('approved'); // approval gate removed
   const [booking, setBooking] = useState({
     specialty: preSelectedDoctor?.specialtyId || '',
     doctor: preSelectedDoctor || null,
     date: null,
-    time: '',
+    tokenNumber: null,
+    availableTokens: 0,
+    totalTokens: 0,
+    workingHours: '',
     reason: '',
-    paymentMethod: 'esewa' // Default to eSewa
+    paymentMethod: 'esewa'
   });
 
   const specialties = [
@@ -82,12 +86,17 @@ const BookAppointment = () => {
     return doctors.filter(doc => doc.specialtyId === booking.specialty);
   };
 
-  const getAvailableDates = () => {
+  const getAvailableDates = async () => {
+    console.log('=== GET AVAILABLE DATES FUNCTION ===');
+    
     if (!booking.doctor) {
+      console.log('✗ No doctor selected');
       return [];
     }
 
-    const dates = [];
+    console.log('✓ Doctor selected:', booking.doctor.name);
+    console.log('Doctor object:', JSON.stringify(booking.doctor, null, 2));
+
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const shortDayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -95,49 +104,251 @@ const BookAppointment = () => {
     // Get doctor's available days from schedule array (new format) or availableDays (old format)
     let doctorAvailableDays = [];
     
+    console.log('Checking schedule format...');
+    console.log('  - schedule:', booking.doctor.schedule);
+    console.log('  - availableDays:', booking.doctor.availableDays);
+    
     if (booking.doctor.schedule && booking.doctor.schedule.length > 0) {
       // New format: use schedule array
       doctorAvailableDays = booking.doctor.schedule
         .filter(s => s.active)
         .map(s => s.day);
-      console.log('Using schedule array:', doctorAvailableDays);
+      console.log('✓ Using schedule array:', doctorAvailableDays);
     } else if (booking.doctor.availableDays && booking.doctor.availableDays.length > 0) {
       // Old format: use availableDays array
       doctorAvailableDays = booking.doctor.availableDays;
-      console.log('Using availableDays array:', doctorAvailableDays);
+      console.log('✓ Using availableDays array:', doctorAvailableDays);
     }
     
     if (doctorAvailableDays.length === 0) {
-      console.log('No available days found for doctor:', booking.doctor);
+      console.log('✗ ERROR: No available days found for doctor!');
+      console.log('Doctor needs to set their schedule in "My Schedule" page');
+      console.log('Full doctor object:', booking.doctor);
       return [];
     }
     
-    // Look ahead for the next 30 days to find available dates
-    for (let i = 0; i < 30; i++) {
+    console.log('✓ Doctor available days:', doctorAvailableDays);
+    
+    const dates = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    console.log('Today:', today.toDateString());
+    console.log('Doctor available days:', doctorAvailableDays);
+    
+    // Look ahead for the next 60 days to find available dates
+    for (let i = 0; i < 60; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
+      date.setHours(0, 0, 0, 0);
       
       const dayName = dayNames[date.getDay()];
       
+      console.log(`Checking day ${i}: ${date.toDateString()} (${dayName})`);
+      
       // Check if this day is in doctor's available days
       if (doctorAvailableDays.includes(dayName)) {
-        dates.push({
+        const dateObj = {
           day: shortDayNames[date.getDay()],
           date: date.getDate(),
           month: monthNames[date.getMonth()],
-          full: date.toISOString().split('T')[0],
+          full: `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`,
           dayName: dayName
-        });
+        };
         
-        // Limit to next 10 available dates for better UX
+        console.log('Found matching day:', dateObj);
+        dates.push(dateObj);
+        
+        // Limit to next 10 potential dates for checking
         if (dates.length >= 10) {
           break;
         }
       }
     }
     
-    console.log('Generated available dates:', dates.length);
-    return dates;
+    console.log('Generated potential dates:', dates.length, dates);
+    
+    if (dates.length === 0) {
+      console.log('No dates generated - check doctor schedule configuration');
+      return [];
+    }
+    
+    // Now filter dates based on token availability
+    // Only show dates progressively - next date only shows when current is fully booked
+    const availableDates = [];
+    
+    for (const dateObj of dates) {
+      try {
+        console.log('Fetching tokens for:', dateObj.full);
+        const response = await fetch(
+          `http://localhost:5001/api/appointments/available-tokens/${booking.doctor.id}/${dateObj.full}`
+        );
+        const data = await response.json();
+        
+        console.log('Token response for', dateObj.full, ':', data);
+        
+        if (data.success) {
+          // Add token info to date object
+          dateObj.availableTokens = data.availableTokens;
+          dateObj.totalTokens = data.totalTokens;
+          dateObj.workingHours = data.workingHours;
+          
+          // If this is the first date OR previous date is fully booked, add it
+          if (availableDates.length === 0) {
+            // Always show the first available date (even if 0 tokens - user needs to see the issue)
+            console.log('Adding first date:', dateObj);
+            availableDates.push(dateObj);
+          } else {
+            // Only show next date if previous date has 0 tokens available
+            const previousDate = availableDates[availableDates.length - 1];
+            console.log('Previous date tokens:', previousDate.availableTokens);
+            if (previousDate.availableTokens === 0) {
+              console.log('Previous date full, adding next date:', dateObj);
+              availableDates.push(dateObj);
+            } else {
+              console.log('Previous date still has tokens, not showing this date yet');
+            }
+          }
+          
+          // Stop after finding 2 dates (current + next if current is full)
+          if (availableDates.length >= 2) {
+            break;
+          }
+        } else {
+          console.log('Token fetch failed for', dateObj.full, ':', data);
+        }
+      } catch (error) {
+        console.error('Error fetching tokens for date:', dateObj.full, error);
+      }
+    }
+    
+    console.log('Final available dates to show:', availableDates);
+    return availableDates;
+  };
+
+  const [availableDates, setAvailableDates] = useState([]);
+  const [loadingDates, setLoadingDates] = useState(false);
+
+  // Pure function — takes doctor explicitly, no closure dependency on booking state
+  const fetchAvailableDatesForDoctor = async (doctor) => {
+    if (!doctor) return [];
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const shortDayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Resolve active days from schedule (new) or availableDays (old)
+    let activeDays = [];
+    if (doctor.schedule && doctor.schedule.length > 0) {
+      activeDays = doctor.schedule.filter(s => s.active).map(s => s.day);
+    } else if (doctor.availableDays && doctor.availableDays.length > 0) {
+      activeDays = doctor.availableDays;
+    }
+
+    if (activeDays.length === 0) return [];
+
+    // Collect next 10 matching dates within 60 days
+    const candidates = [];
+    for (let i = 0; i < 60; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      d.setHours(0, 0, 0, 0);
+      const dayName = dayNames[d.getDay()];
+      if (activeDays.includes(dayName)) {
+        candidates.push({
+          day: shortDayNames[d.getDay()],
+          date: d.getDate(),
+          month: monthNames[d.getMonth()],
+          full: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
+          dayName
+        });
+        if (candidates.length >= 10) break;
+      }
+    }
+
+    if (candidates.length === 0) return [];
+
+    // Progressive filter: show first date; show next only when previous is fully booked
+    const result = [];
+    for (const dateObj of candidates) {
+      try {
+        const res = await fetch(
+          `http://localhost:5001/api/appointments/available-tokens/${doctor.id}/${dateObj.full}`
+        );
+        const data = await res.json();
+        if (!data.success) continue;
+
+        dateObj.availableTokens = data.availableTokens;
+        dateObj.totalTokens = data.totalTokens;
+        dateObj.workingHours = data.workingHours;
+
+        if (result.length === 0) {
+          result.push(dateObj); // always show the first upcoming date
+        } else if (result[result.length - 1].availableTokens === 0) {
+          result.push(dateObj); // show next only when previous is full
+        } else {
+          break; // previous still has tokens — stop here
+        }
+
+        if (result.length >= 2) break;
+      } catch (e) {
+        console.error('Token fetch error for', dateObj.full, e);
+      }
+    }
+
+    return result;
+  };
+
+  // Reload dates whenever doctor changes or we arrive at step 2
+  useEffect(() => {
+    if (!booking.doctor || step !== 2) return;
+    const doctor = booking.doctor; // capture current value
+    setLoadingDates(true);
+    fetchAvailableDatesForDoctor(doctor)
+      .then(dates => setAvailableDates(dates))
+      .catch(() => setAvailableDates([]))
+      .finally(() => setLoadingDates(false));
+  }, [booking.doctor?.id, step]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleDateSelect = async (dateObj) => {
+    setBooking({ 
+      ...booking, 
+      date: dateObj, 
+      tokenNumber: null,
+      availableTokens: dateObj.availableTokens,
+      totalTokens: dateObj.totalTokens
+    });
+    
+    if (booking.doctor && booking.doctor.id) {
+      await fetchAvailableTokens(booking.doctor.id, dateObj.full);
+    }
+  };
+
+  // Refresh dates after booking to show next date if current is full
+  const refreshAvailableDates = async () => {
+    setLoadingDates(true);
+    const dates = await getAvailableDates();
+    setAvailableDates(dates);
+    setLoadingDates(false);
+  };
+
+  const fetchAvailableTokens = async (doctorId, date) => {
+    try {
+      const response = await fetch(`http://localhost:5001/api/appointments/available-tokens/${doctorId}/${date}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setBooking(prev => ({
+          ...prev,
+          availableTokens: data.availableTokens,
+          totalTokens: data.totalTokens,
+          workingHours: data.workingHours,
+          lunchBreak: data.lunchBreak
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching available tokens:', error);
+    }
   };
 
   const getNextAvailableDate = () => {
@@ -186,85 +397,6 @@ const BookAppointment = () => {
     return null;
   };
 
-  const generateTimeSlots = () => {
-    if (!booking.doctor) {
-      // Default time slots if no doctor
-      return [
-        '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
-        '11:00 AM', '11:30 AM', '02:00 PM', '02:30 PM',
-        '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM'
-      ];
-    }
-
-    // Get the selected date's day name
-    const selectedDayName = booking.date?.dayName;
-    
-    let startTime, endTime;
-    
-    // Try to get times from schedule array (new format)
-    if (booking.doctor.schedule && booking.doctor.schedule.length > 0 && selectedDayName) {
-      const daySchedule = booking.doctor.schedule.find(s => s.day === selectedDayName && s.active);
-      if (daySchedule) {
-        startTime = daySchedule.start;
-        endTime = daySchedule.end;
-      }
-    }
-    
-    // Fallback to old format
-    if (!startTime && booking.doctor.availableTimeStart) {
-      startTime = booking.doctor.availableTimeStart;
-      endTime = booking.doctor.availableTimeEnd;
-    }
-    
-    // If still no times, return default slots
-    if (!startTime || !endTime) {
-      return [
-        '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
-        '11:00 AM', '11:30 AM', '02:00 PM', '02:30 PM',
-        '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM'
-      ];
-    }
-
-    const slots = [];
-    
-    // Get lunch break times if available
-    const lunchStart = booking.doctor.lunchBreak?.start || '13:00';
-    const lunchEnd = booking.doctor.lunchBreak?.end || '14:00';
-    
-    // Convert time strings to minutes for easier calculation
-    const timeToMinutes = (timeStr) => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
-    
-    const minutesToTime = (minutes) => {
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
-      return `${displayHours}:${mins.toString().padStart(2, '0')} ${period}`;
-    };
-    
-    const startMinutes = timeToMinutes(startTime);
-    const endMinutes = timeToMinutes(endTime);
-    const lunchStartMinutes = timeToMinutes(lunchStart);
-    const lunchEndMinutes = timeToMinutes(lunchEnd);
-    
-    // Get consultation duration (default 30 minutes)
-    const slotDuration = booking.doctor.consultationDuration || 30;
-    
-    // Generate slots with lunch break exclusion
-    for (let minutes = startMinutes; minutes < endMinutes; minutes += slotDuration) {
-      // Skip lunch break slots
-      if (minutes >= lunchStartMinutes && minutes < lunchEndMinutes) {
-        continue;
-      }
-      slots.push(minutesToTime(minutes));
-    }
-    
-    return slots;
-  };
-
   const isDateOnLeave = (dateStr) => {
     if (!booking.doctor || !booking.doctor.leaves || booking.doctor.leaves.length === 0) {
       return false;
@@ -284,9 +416,13 @@ const BookAppointment = () => {
     return false;
   };
 
-  const unavailableSlots = ['10:00 AM', '02:30 PM', '04:00 PM'];
-
   const handleBooking = async () => {
+    // Validate token selection
+    if (!booking.tokenNumber) {
+      alert('Please confirm your token number before proceeding.');
+      return;
+    }
+
     try {
       // Simulate eSewa payment process
       if (booking.paymentMethod === 'esewa') {
@@ -320,7 +456,7 @@ const BookAppointment = () => {
         doctorSpecialization: booking.doctor.specialty,
         hospital: booking.doctor.hospital || '',
         appointmentDate: booking.date.full,
-        appointmentTime: booking.time,
+        tokenNumber: booking.tokenNumber,
         appointmentType: 'consultation',
         reasonForVisit: booking.reason || 'General consultation',
         consultationFee: booking.doctor.fee,
@@ -374,7 +510,7 @@ const BookAppointment = () => {
 
   const canProceed = () => {
     if (step === 1) return booking.doctor;
-    if (step === 2) return booking.date && booking.time;
+    if (step === 2) return booking.date && booking.tokenNumber;
     return true;
   };
 
@@ -617,7 +753,7 @@ const BookAppointment = () => {
               </>
             )}
 
-            {/* Step 2: Select Date & Time */}
+            {/* Step 2: Select Date */}
             {step === 2 && (
               <>
                 <div className="date-select">
@@ -648,29 +784,62 @@ const BookAppointment = () => {
                             : 'No availability information';
                         })()}
                       </p>
-                      <div className="date-picker">
-                        {getAvailableDates().map((d, index) => {
-                          const onLeave = isDateOnLeave(d.full);
-                          return (
-                            <div
-                              key={index}
-                              className={`date-option ${booking.date?.full === d.full ? 'selected' : ''} ${onLeave ? 'on-leave' : ''}`}
-                              onClick={() => !onLeave && setBooking({ ...booking, date: d })}
-                              title={onLeave ? 'Doctor is on leave' : ''}
-                            >
-                              <div className="day">{d.day}</div>
-                              <div className="date">{d.date}</div>
-                              <div className="month">{d.month}</div>
-                              {onLeave && <div className="leave-badge">On Leave</div>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {getAvailableDates().length === 0 && (
-                        <div className="no-availability">
-                          <p>No available dates found for this doctor.</p>
-                          <p>Please contact the clinic directly or choose another doctor.</p>
+                      {loadingDates ? (
+                        <div className="loading-state">
+                          <div className="loading-spinner"></div>
+                          <p>Loading available dates...</p>
                         </div>
+                      ) : (
+                        <>
+                          <div className="date-picker">
+                            {availableDates.map((d, index) => {
+                              const onLeave = isDateOnLeave(d.full);
+                              return (
+                                <div
+                                  key={index}
+                                  className={`date-option ${booking.date?.full === d.full ? 'selected' : ''} ${onLeave ? 'on-leave' : ''}`}
+                                  onClick={() => !onLeave && handleDateSelect(d)}
+                                  title={onLeave ? 'Doctor is on leave' : ''}
+                                >
+                                  <div className="day">{d.day}</div>
+                                  <div className="date">{d.date}</div>
+                                  <div className="month">{d.month}</div>
+                                  {d.availableTokens !== undefined && (
+                                    <div className="token-badge" style={{
+                                      fontSize: '0.7rem',
+                                      marginTop: '0.25rem',
+                                      color: d.availableTokens === 0 ? '#dc2626' : '#10b981'
+                                    }}>
+                                      {d.availableTokens}/{d.totalTokens}
+                                    </div>
+                                  )}
+                                  {onLeave && <div className="leave-badge">On Leave</div>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {availableDates.length === 0 && (
+                            <div className="no-availability">
+                              <p>No available dates found for this doctor.</p>
+                              <p style={{ fontSize: '0.9rem', marginTop: '0.5rem', color: '#6b7280' }}>
+                                This could mean:
+                              </p>
+                              <ul style={{ fontSize: '0.85rem', color: '#6b7280', textAlign: 'left', marginTop: '0.5rem' }}>
+                                <li>The doctor hasn't set up their schedule yet</li>
+                                <li>All available dates are fully booked</li>
+                                <li>The doctor is on leave</li>
+                              </ul>
+                              <p style={{ fontSize: '0.9rem', marginTop: '1rem' }}>
+                                Please contact the clinic directly or choose another doctor.
+                              </p>
+                            </div>
+                          )}
+                          {availableDates.length > 0 && availableDates[0].availableTokens === 0 && availableDates.length === 1 && (
+                            <div className="info-note" style={{ marginTop: '1rem' }}>
+                              <p>The next available date is fully booked. Please check back later or contact the clinic.</p>
+                            </div>
+                          )}
+                        </>
                       )}
                     </>
                   ) : (
@@ -680,26 +849,53 @@ const BookAppointment = () => {
                   )}
                 </div>
 
-                <div className="time-select">
-                  <h2>Select Time</h2>
-                  {booking.doctor ? (
-                    <div className="time-slots">
-                      {generateTimeSlots().map((time) => (
-                        <div
-                          key={time}
-                          className={`time-slot ${booking.time === time ? 'selected' : ''} ${unavailableSlots.includes(time) ? 'unavailable' : ''}`}
-                          onClick={() => !unavailableSlots.includes(time) && setBooking({ ...booking, time })}
-                        >
-                          {time}
+                {booking.date && (
+                  <div className="token-info-section">
+                    <h2>Appointment Information</h2>
+                    <div className="token-info-card">
+                      <div className="info-row">
+                        <span className="label">Doctor's Working Hours:</span>
+                        <span className="value">{booking.workingHours || 'Not available'}</span>
+                      </div>
+                      {booking.lunchBreak && (
+                        <div className="info-row">
+                          <span className="label">Lunch Break:</span>
+                          <span className="value">{booking.lunchBreak}</span>
                         </div>
-                      ))}
+                      )}
+                      <div className="info-row">
+                        <span className="label">Available Tokens:</span>
+                        <span className="value highlight">{booking.availableTokens} / {booking.totalTokens}</span>
+                      </div>
+                      <div className="info-note">
+                        <p>Each token represents a 30-minute consultation slot.</p>
+                        <p>Your specific appointment time will be assigned based on your token number.</p>
+                      </div>
+                      
+                      {booking.availableTokens > 0 ? (
+                        <div className="token-confirmation">
+                          <p className="confirm-text">You will receive Token #{booking.totalTokens - booking.availableTokens + 1}</p>
+                          <button 
+                            className="confirm-token-btn"
+                            onClick={() => {
+                              const nextToken = booking.totalTokens - booking.availableTokens + 1;
+                              setBooking({ ...booking, tokenNumber: nextToken });
+                            }}
+                          >
+                            {booking.tokenNumber ? '✓ Token Confirmed' : 'Confirm Token'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="no-tokens">
+                          <p>No tokens available for this date.</p>
+                          {availableDates.length > 1 && (
+                            <p>Please select the next available date.</p>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="no-doctor-selected">
-                      <p>Please select a doctor first to see available times.</p>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 <div className="reason-input">
                   <h2>Reason for Visit (Optional)</h2>
@@ -733,8 +929,12 @@ const BookAppointment = () => {
                     <span className="value">{booking.date?.day}, {booking.date?.date} {booking.date?.month}</span>
                   </div>
                   <div className="detail-row">
-                    <span className="label">Time</span>
-                    <span className="value">{booking.time}</span>
+                    <span className="label">Token Number</span>
+                    <span className="value">#{booking.tokenNumber}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Working Hours</span>
+                    <span className="value">{booking.workingHours}</span>
                   </div>
                   <div className="detail-row">
                     <span className="label">Consultation Fee</span>
@@ -845,9 +1045,16 @@ const BookAppointment = () => {
             </div>
 
             <div className="summary-item">
-              <span className="label">Time</span>
-              <span className="value">{booking.time || 'Not selected'}</span>
+              <span className="label">Token</span>
+              <span className="value">{booking.tokenNumber ? `#${booking.tokenNumber}` : 'Not confirmed'}</span>
             </div>
+
+            {booking.workingHours && (
+              <div className="summary-item">
+                <span className="label">Working Hours</span>
+                <span className="value">{booking.workingHours}</span>
+              </div>
+            )}
 
             {step === 3 && booking.paymentMethod && (
               <div className="summary-item">
