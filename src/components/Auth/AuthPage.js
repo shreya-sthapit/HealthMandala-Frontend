@@ -24,6 +24,13 @@ const AuthPage = () => {
   const lockedRole = searchParams.get('role') || 'patient';
   const redirectTo = searchParams.get('redirect') || '/';
 
+  // If already logged in as patient, redirect away from auth page
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('userRole');
+    if (token && role === 'patient') navigate(redirectTo, { replace: true });
+  }, []); // eslint-disable-line
+
   const [mode, setMode] = useState(initialMode); // 'signin' | 'signup'
   const [isAnimating, setIsAnimating] = useState(false);
   const [exitDir, setExitDir] = useState(''); // 'to-signup' | 'to-signin'
