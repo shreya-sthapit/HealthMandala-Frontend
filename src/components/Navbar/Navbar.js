@@ -10,12 +10,14 @@ const Navbar = () => {
 
   const [user, setUser] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [notifCount] = useState(0); // placeholder for future notifications
+  const [notifCount] = useState(0);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
 
   useEffect(() => {
     if (user?.profilePhoto) {
       setProfilePhotoUrl(`http://localhost:5001/${user.profilePhoto}`);
+    } else {
+      setProfilePhotoUrl(null);
     }
   }, [user]);
 
