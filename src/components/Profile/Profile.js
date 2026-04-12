@@ -62,34 +62,19 @@ const Profile = () => {
       }
 
       if (statusData.success && statusData.hasRegistration) {
-        if (statusData.status === 'pending') {
-          // Registration exists but pending approval
-          setProfile(statusData.registration);
-          setError(`Your ${role} registration is pending admin approval. You'll be able to view your complete profile once approved.`);
-          return;
-        } else if (statusData.status === 'approved') {
-          // Registration approved, fetch full profile
-          const profileEndpoint = role === 'doctor' 
-            ? `http://localhost:5001/api/doctor/profile/${userId}`
-            : `http://localhost:5001/api/patient/profile/${userId}`;
+        // Always load the profile regardless of status
+        const profileEndpoint = role === 'doctor'
+          ? `http://localhost:5001/api/doctor/profile/${userId}`
+          : `http://localhost:5001/api/patient/profile/${userId}`;
 
-          const profileResponse = await fetch(profileEndpoint);
-          const profileData = await profileResponse.json();
+        const profileResponse = await fetch(profileEndpoint);
+        const profileData = await profileResponse.json();
 
-          if (profileData.success) {
-            setProfile({
-              ...profileData.profile,
-              role: role
-            });
-            setError('');
-          } else {
-            throw new Error('Failed to fetch approved profile');
-          }
-        } else if (statusData.status === 'rejected') {
-          // Registration rejected
-          setProfile(statusData.registration);
-          setError(`Your ${role} registration was rejected. Please contact support or resubmit your registration.`);
-          return;
+        if (profileData.success) {
+          setProfile({ ...profileData.profile, role });
+          setError('');
+        } else {
+          throw new Error('Failed to fetch profile');
         }
       }
     } catch (error) {
@@ -126,12 +111,6 @@ const Profile = () => {
   if (loading) {
     return (
       <div className="profile-page">
-        <nav className="top-navbar">
-          <Link to="/home" className="logo">
-            <img src="/logo.png" alt="HealthMandala" />
-            <span>HealthMandala</span>
-          </Link>
-        </nav>
         <div className="profile-content">
           <div className="loading-state">
             <div className="loading-spinner"></div>
@@ -145,12 +124,6 @@ const Profile = () => {
   if (!profile) {
     return (
       <div className="profile-page">
-        <nav className="top-navbar">
-          <Link to="/home" className="logo">
-            <img src="/logo.png" alt="HealthMandala" />
-            <span>HealthMandala</span>
-          </Link>
-        </nav>
         <div className="profile-content">
           <div className="error-state">
             <p>Profile not found. Please complete your registration.</p>
@@ -165,29 +138,9 @@ const Profile = () => {
 
   return (
     <div className="profile-page">
-      <nav className="top-navbar">
-        <Link to={userRole === 'doctor' ? '/doctor-dashboard' : '/home'} className="logo">
-          <img src="/logo.png" alt="HealthMandala" />
-          <span>HealthMandala</span>
-        </Link>
-        <div className="nav-right">
-          <div className="nav-icons">
-            <button className="nav-icon" title="Notifications">N</button>
-            <Link to="/profile" className="user-menu">
-              <div className="user-avatar">
-                {profile && profile.firstName && profile.lastName 
-                  ? `${profile.firstName[0]}${profile.lastName[0]}`
-                  : profile?.firstName?.[0] || 'U'
-                }
-              </div>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
       <div className="profile-content">
         <div className="page-header">
-          <Link to={userRole === 'doctor' ? '/doctor-dashboard' : '/home'} className="back-btn">
+          <Link to={userRole === 'doctor' ? '/doctor-dashboard' : '/'} className="back-btn">
             ← Back to {userRole === 'doctor' ? 'Dashboard' : 'Home'}
           </Link>
           <h1>My Profile</h1>
