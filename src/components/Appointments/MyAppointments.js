@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import AppointmentCard from './AppointmentCard';
+import PrescriptionModal from './PrescriptionModal';
 import './Appointments.css';
+import { requireApproval } from '../../utils/approvalCheck';
 
 const MyAppointments = () => {
   const [activeTab, setActiveTab] = useState('upcoming');
@@ -9,6 +11,7 @@ const MyAppointments = () => {
   const [loading, setLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [showCard, setShowCard] = useState(false);
+  const [showPrescription, setShowPrescription] = useState(false);
 
   useEffect(() => {
     fetchAppointments();
@@ -62,15 +65,21 @@ const MyAppointments = () => {
     today.setHours(0, 0, 0, 0);
     appointmentDate.setHours(0, 0, 0, 0);
 
-    if (appointment.status === 'cancelled') return 'cancelled';
+    if (appointment.status === 'cancelled' || appointment.status === 'rejected') return 'cancelled';
     if (appointment.status === 'completed') return 'completed';
+    // Past date with no explicit status = completed
     if (appointmentDate < today) return 'completed';
+    // Future/today date — show as upcoming regardless of approval status
     return 'upcoming';
   };
 
   const filteredAppointments = appointments.filter(apt => getStatusFromDate(apt) === activeTab);
 
   const cancelAppointment = async (appointmentId) => {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    const approved = await requireApproval(userData.id, 'patient');
+    if (!approved) return;
+
     if (!window.confirm('Are you sure you want to cancel this appointment?')) return;
 
     try {
@@ -90,26 +99,19 @@ const MyAppointments = () => {
     }
   };
 
+  const handleProtectedAction = async (action) => {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    const approved = await requireApproval(userData.id, 'patient');
+    if (approved) {
+      action();
+    }
+  };
+
   return (
     <div className="appointments-container">
-      <nav className="top-navbar">
-        <Link to="/home" className="logo">
-          <img src="/logo.png" alt="HealthMandala" />
-          <span>HealthMandala</span>
-        </Link>
-        <div className="nav-right">
-          <div className="nav-icons">
-            <button className="nav-icon" title="Notifications">N</button>
-            <Link to="/profile" className="user-menu">
-              <div className="user-avatar">JD</div>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
       <div className="appointments-content">
         <div className="page-header">
-          <Link to="/home" className="back-btn">← Back to Home</Link>
+          <Link to="/" className="back-btn">← Back to Home</Link>
           <h1>My Appointments</h1>
         </div>
 
@@ -165,18 +167,25 @@ const MyAppointments = () => {
                     </div>
                   </div>
                   <div className="appointment-right">
-                    <span className={`status-badge ${status}`}>
-                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    <span className={`status-badge ${apt.status === 'pending-admin' ? 'pending' : apt.status}`}>
+                      {apt.status === 'pending-admin' ? 'Awaiting Approval' :
+                       apt.status === 'pending' ? 'Awaiting Doctor' :
+                       apt.status === 'approved' ? 'Awaiting Doctor' :
+                       apt.status === 'confirmed' ? 'Confirmed' :
+                       apt.status === 'completed' ? 'Completed' :
+                       apt.status === 'cancelled' ? 'Cancelled' :
+                       apt.status === 'rejected' ? 'Rejected' :
+                       apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
                     </span>
                     <div className="appointment-actions-full">
                       {status === 'upcoming' && (
                         <>
                           <button 
                             className="action-btn primary"
-                            onClick={() => {
+                            onClick={() => handleProtectedAction(() => {
                               setSelectedAppointment(apt);
                               setShowCard(true);
-                            }}
+                            })}
                           >
                             View Card
                           </button>
@@ -192,14 +201,22 @@ const MyAppointments = () => {
                         <>
                           <button 
                             className="action-btn primary"
-                            onClick={() => {
+                            onClick={() => handleProtectedAction(() => {
                               setSelectedAppointment(apt);
                               setShowCard(true);
-                            }}
+                            })}
                           >
                             View Card
                           </button>
-                          <button className="action-btn secondary">View Details</button>
+                          <button
+                            className="action-btn secondary"
+                            onClick={() => handleProtectedAction(() => {
+                              setSelectedAppointment(apt);
+                              setShowPrescription(true);
+                            })}
+                          >
+                            View Details
+                          </button>
                         </>
                       )}
                       {status === 'cancelled' && (
@@ -231,10 +248,15 @@ const MyAppointments = () => {
       {showCard && selectedAppointment && (
         <AppointmentCard 
           appointment={selectedAppointment}
-          onClose={() => {
-            setShowCard(false);
-            setSelectedAppointment(null);
-          }}
+          onClose={() => { setShowCard(false); setSelectedAppointment(null); }}
+        />
+      )}
+
+      {/* Prescription Modal */}
+      {showPrescription && selectedAppointment && (
+        <PrescriptionModal
+          appointment={selectedAppointment}
+          onClose={() => { setShowPrescription(false); setSelectedAppointment(null); }}
         />
       )}
     </div>
