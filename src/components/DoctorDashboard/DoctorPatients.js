@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import PatientDetailModal from './PatientDetailModal';
 import './DoctorPatients.css';
 
 const DoctorPatients = () => {
@@ -7,6 +8,7 @@ const DoctorPatients = () => {
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('recent');
+  const [selectedPatient, setSelectedPatient] = useState(null);
 
   useEffect(() => {
     fetchPatients();
@@ -156,7 +158,12 @@ const DoctorPatients = () => {
                   )}
                   <div className="patient-card-footer">
                     <button className="btn secondary">View Records</button>
-                    <button className="btn primary">Book Appointment</button>
+                    <button 
+                      className="btn primary"
+                      onClick={() => setSelectedPatient(patient)}
+                    >
+                      View Details
+                    </button>
                   </div>
                 </div>
               ))
@@ -168,6 +175,13 @@ const DoctorPatients = () => {
           </div>
         )}
       </div>
+
+      {selectedPatient && (
+        <PatientDetailModal
+          patient={selectedPatient}
+          onClose={() => setSelectedPatient(null)}
+        />
+      )}
     </div>
   );
 };
