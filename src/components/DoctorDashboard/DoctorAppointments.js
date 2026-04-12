@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './DoctorAppointments.css';
+import { requireApproval } from '../../utils/approvalCheck';
 
 const DoctorAppointments = () => {
   const [activeFilter, setActiveFilter] = useState('pending');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchAppointments();
@@ -47,6 +49,10 @@ const DoctorAppointments = () => {
   };
 
   const handleConfirm = async (appointmentId) => {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    const approved = await requireApproval(userData.id, 'doctor');
+    if (!approved) return;
+
     if (!window.confirm('Confirm this appointment?')) return;
 
     try {
@@ -69,6 +75,10 @@ const DoctorAppointments = () => {
   };
 
   const handleCancel = async (appointmentId) => {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    const approved = await requireApproval(userData.id, 'doctor');
+    if (!approved) return;
+
     if (!window.confirm('Cancel this appointment?')) return;
 
     try {
@@ -91,7 +101,6 @@ const DoctorAppointments = () => {
 
   const filteredAppointments = appointments.filter(apt => {
     if (activeFilter === 'all') return true;
-    // Handle both old 'approved' status and new 'pending' status for doctor confirmation
     if (activeFilter === 'pending') return apt.status === 'pending' || apt.status === 'approved';
     if (activeFilter === 'confirmed') return apt.status === 'confirmed';
     if (activeFilter === 'completed') return apt.status === 'completed';
@@ -170,8 +179,7 @@ const DoctorAppointments = () => {
                   <div className="time-cell">{apt.appointmentTime}</div>
                   <div className="status-cell">
                     <span className={`status-badge ${apt.status === 'approved' ? 'pending' : apt.status}`}>
-                      {apt.status === 'pending-admin' ? 'Awaiting Admin' : 
-                       apt.status === 'approved' ? 'Pending' :
+                      {apt.status === 'approved' ? 'Pending' :
                        apt.status === 'pending' ? 'Pending' :
                        apt.status.charAt(0).toUpperCase() + apt.status.slice(1)}
                     </span>
