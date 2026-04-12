@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import './Auth.css';
 
 const Login = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const roleHint = searchParams.get('role') || ''; // 'patient' | 'doctor' | ''
   const [authMethod, setAuthMethod] = useState('email');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,7 +60,7 @@ const Login = () => {
         } else if (data.user.role === 'admin') {
           navigate('/admin');
         } else {
-          navigate('/home');
+          navigate('/'); // patient → landing page
         }
       } else {
         setError(data.error || 'Login failed. Please try again.');
@@ -73,15 +75,48 @@ const Login = () => {
 
   return (
     <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-header">
-          <Link to="/" className="auth-logo">
-            <img src="/logo.png" alt="HealthMandala" />
+      <div className="auth-split">
+        {/* Left Panel */}
+        <div className="auth-left">
+          <div className="auth-brand">
+            <img src="/logo.png" alt="HealthMandala" className="auth-brand-logo" />
             <span>HealthMandala</span>
-          </Link>
-          <h2>Welcome Back</h2>
-          <p>Login to manage your appointments</p>
+          </div>
+          <div className="auth-left-content">
+            <h1>Your Health,<br/>Our Priority</h1>
+            <p>Book appointments with top doctors in Nepal — fast, simple, and secure.</p>
+            <div className="auth-features">
+              <div className="auth-feature-item">
+                <svg className="auth-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Book appointments with verified doctors instantly</span>
+              </div>
+              <div className="auth-feature-item">
+                <svg className="auth-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Access top hospitals across Nepal</span>
+              </div>
+              <div className="auth-feature-item">
+                <svg className="auth-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Secure & private health records</span>
+              </div>
+            </div>
+          </div>
+          <div className="auth-illustration">
+            <img src="/Middle Image.png" alt="Healthcare" />
+          </div>
         </div>
+
+        {/* Right Panel */}
+        <div className="auth-right">
+          <div className="auth-card">
+            <div className="auth-header">
+              <h2>{roleHint === 'doctor' ? 'Doctor Login' : 'Patient Login'}</h2>
+              <p>{roleHint === 'doctor' ? 'Access your doctor dashboard' : 'Login to manage your appointments'}</p>
+              {roleHint === 'doctor' && (
+                <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '6px' }}>
+                  Not a doctor? <a href="/login?role=patient" style={{ color: 'var(--primary-color)' }}>Patient Login</a>
+                </p>
+              )}
+            </div>
 
         <div className="auth-toggle">
           <button
@@ -161,8 +196,10 @@ const Login = () => {
         </form>
 
         <p className="auth-footer">
-          Don't have an account? <Link to="/signup">Sign Up</Link>
+          Don't have an account? <Link to={roleHint === 'doctor' ? '/signup?role=doctor' : '/signup?role=patient'}>Sign Up</Link>
         </p>
+          </div>
+        </div>
       </div>
     </div>
   );

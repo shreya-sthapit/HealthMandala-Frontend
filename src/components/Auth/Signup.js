@@ -1,11 +1,15 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { auth } from '../config/firebase.ts';
 import './Auth.css';
 
 const Signup = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // 'patient' from navbar, 'doctor' from Apply Now — lock the role
+  const lockedRole = searchParams.get('role') || '';
+
   const [authMethod, setAuthMethod] = useState('email');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +24,7 @@ const Signup = () => {
     countryCode: '+977',
     password: '',
     confirmPassword: '',
-    role: ''
+    role: lockedRole || ''
   });
 
   const handleChange = (e) => {
@@ -159,15 +163,48 @@ const Signup = () => {
         </div>
       )}
 
-      <div className="auth-card">
-        <div className="auth-header">
-          <Link to="/" className="auth-logo">
-            <img src="/logo.png" alt="HealthMandala" />
+      <div className="auth-split">
+        {/* Left Panel */}
+        <div className="auth-left">
+          <div className="auth-brand">
+            <img src="/logo.png" alt="HealthMandala" className="auth-brand-logo" />
             <span>HealthMandala</span>
-          </Link>
-          <h2>Create Account</h2>
-          <p>Join us for better healthcare</p>
+          </div>
+          <div className="auth-left-content">
+            <h1>Your Health,<br/>Our Priority</h1>
+            <p>Join thousands of patients booking smarter healthcare in Nepal.</p>
+            <div className="auth-features">
+              <div className="auth-feature-item">
+                <svg className="auth-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Book appointments with verified doctors instantly</span>
+              </div>
+              <div className="auth-feature-item">
+                <svg className="auth-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Access top hospitals across Nepal</span>
+              </div>
+              <div className="auth-feature-item">
+                <svg className="auth-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span>Secure & private health records</span>
+              </div>
+            </div>
+          </div>
+          <div className="auth-illustration">
+            <img src="/Middle Image.png" alt="Healthcare" />
+          </div>
         </div>
+
+        {/* Right Panel */}
+        <div className="auth-right">
+          <div className="auth-card">
+            <div className="auth-header">
+              <h2>{lockedRole === 'doctor' ? 'Doctor Sign Up' : 'Patient Sign Up'}</h2>
+              <p>{lockedRole === 'doctor' ? 'Join as a healthcare professional' : 'Join us for better healthcare'}</p>
+              {lockedRole === 'doctor' && (
+                <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '6px' }}>
+                  Not a doctor? <a href="/signup?role=patient" style={{ color: 'var(--primary-color)' }}>Patient Sign Up</a>
+                </p>
+              )}
+            </div>
 
         <div className="auth-toggle">
           <button
@@ -185,17 +222,18 @@ const Signup = () => {
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
-          {/* Role Selection */}
+          {/* Role Selection — only shown when role is not pre-determined */}
+          {!lockedRole && (
           <div className="role-selection">
             <div className="role-options">
-              <div 
+              <div
                 className={`role-option ${formData.role === 'patient' ? 'selected' : ''}`}
                 onClick={() => setFormData({ ...formData, role: 'patient' })}
               >
                 <div className="role-icon">P</div>
                 <span>Patient</span>
               </div>
-              <div 
+              <div
                 className={`role-option ${formData.role === 'doctor' ? 'selected' : ''}`}
                 onClick={() => setFormData({ ...formData, role: 'doctor' })}
               >
@@ -204,6 +242,7 @@ const Signup = () => {
               </div>
             </div>
           </div>
+          )}
 
           <div className="form-row">
             <div className="form-group">
@@ -306,8 +345,10 @@ const Signup = () => {
         </form>
 
         <p className="auth-footer">
-          Already have an account? <Link to="/login">Login</Link>
+          Already have an account? <Link to={lockedRole === 'doctor' ? '/login?role=doctor' : '/login?role=patient'}>Login</Link>
         </p>
+          </div>
+        </div>
       </div>
     </div>
   );
