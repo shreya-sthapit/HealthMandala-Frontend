@@ -47,7 +47,7 @@ const Footer = () => {
         </div>
       </div>
       <div className="gf-bottom">
-        <p>&copy; 2026 HealthMandala. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} HealthMandala. All rights reserved.</p>
       </div>
     </footer>
   );
