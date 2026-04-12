@@ -193,24 +193,9 @@ const MedicalRecords = () => {
 
   return (
     <div className="records-container">
-      <nav className="top-navbar">
-        <Link to="/home" className="logo">
-          <img src="/logo.png" alt="HealthMandala" />
-          <span>HealthMandala</span>
-        </Link>
-        <div className="nav-right">
-          <div className="nav-icons">
-            <button className="nav-icon" title="Notifications">N</button>
-            <Link to="/profile" className="user-menu">
-              <div className="user-avatar">JD</div>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
       <div className="records-content">
         <div className="page-header">
-          <Link to="/home" className="back-btn">← Back to Home</Link>
+          <Link to="/" className="back-btn">← Back to Home</Link>
           <h1>Medical Records</h1>
         </div>
 
