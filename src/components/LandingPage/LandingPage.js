@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 const LandingPage = () => {
   const navigate = useNavigate();
   const isLoggedIn = !!localStorage.getItem('token');
+  const userRole = localStorage.getItem('userRole');
 
   const [doctors, setDoctors] = useState([]);
   const [specialties, setSpecialties] = useState([]);
@@ -60,7 +61,7 @@ const LandingPage = () => {
               HealthMandala makes healthcare accessible, simple, and convenient.
             </p>
             <div className="hero-buttons">
-              <Link to={isLoggedIn ? '/find-doctors' : '/auth?role=patient&mode=signup'} className="btn btn-primary">Consult Now</Link>
+              <Link to={isLoggedIn && userRole === 'patient' ? '/find-doctors' : '/auth?role=patient&mode=signup'} className="btn btn-primary">Consult Now</Link>
             </div>
           </div>
           <div className="hero-image">
