@@ -42,8 +42,10 @@ const getRole = () => localStorage.getItem('userRole');
 /** Redirect to login, preserving the intended URL */
 const PatientRoute = ({ children }) => {
   const location = useLocation();
-  if (!isLoggedIn() || getRole() !== 'patient') {
-    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('userRole');
+  if (!token || role !== 'patient') {
+    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   }
   return children;
 };
