@@ -12,7 +12,7 @@ const AppointmentCard = ({ appointment, onClose }) => {
   };
 
   const appointmentId = appointment._id || appointment.id || 'HM' + Date.now();
-  const qrData = `HealthMandala Appointment\nID: ${appointmentId}\nPatient: ${appointment.patientName}\nDoctor: ${appointment.doctorName}\nDate: ${new Date(appointment.appointmentDate).toLocaleDateString()}\nTime: ${appointment.appointmentTime}`;
+  const qrData = `HealthMandala Appointment\nID: ${appointmentId}\nPatient: ${appointment.patientName}\nDoctor: ${appointment.doctorName}\nDate: ${new Date(appointment.appointmentDate).toLocaleDateString()}\nToken: #${appointment.tokenNumber || 'N/A'}`;
 
   const handleDownload = () => {
     // Create a canvas to draw the card
@@ -24,7 +24,7 @@ const AppointmentCard = ({ appointment, onClose }) => {
   };
 
   const handleShare = (method) => {
-    const shareText = `My appointment with ${appointment.doctorName} on ${new Date(appointment.appointmentDate).toLocaleDateString()} at ${appointment.appointmentTime}`;
+    const shareText = `My appointment with ${appointment.doctorName} on ${new Date(appointment.appointmentDate).toLocaleDateString()} - Token #${appointment.tokenNumber || 'N/A'}`;
     
     switch(method) {
       case 'whatsapp':
@@ -246,12 +246,24 @@ const AppointmentCard = ({ appointment, onClose }) => {
               </div>
 
               <div className="detail-item">
-                <div className="detail-icon">🕐</div>
+                <div className="detail-icon">🎫</div>
                 <div>
-                  <label>Time</label>
-                  <p>{appointment.appointmentTime}</p>
+                  <label>Token Number</label>
+                  <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#00a896' }}>
+                    #{appointment.tokenNumber || 'N/A'}
+                  </p>
                 </div>
               </div>
+
+              {appointment.appointmentTime && (
+                <div className="detail-item">
+                  <div className="detail-icon">🕐</div>
+                  <div>
+                    <label>Appointment Time</label>
+                    <p>{appointment.appointmentTime}</p>
+                  </div>
+                </div>
+              )}
 
               <div className="detail-item">
                 <div className="detail-icon">💰</div>
