@@ -54,6 +54,7 @@ const AuthPage = () => {
   const [signupError, setSignupError] = useState('');
   const [showPopup, setShowPopup] = useState(false);
   const [popupEmail, setPopupEmail] = useState('');
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   // Sync mode from URL
   useEffect(() => {
@@ -149,6 +150,7 @@ const AuthPage = () => {
         }));
         setPopupEmail(signupData.email);
         setShowPopup(true);
+          setSignupSuccess(true);
       } else {
         setSignupError(data.error || 'Failed to send verification email.');
       }
