@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Home.css';
+import { requireApproval } from '../../utils/approvalCheck';
 
 const Home = () => {
   const [user, setUser] = useState({ firstName: 'User', lastName: '' });
@@ -12,15 +13,10 @@ const Home = () => {
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
 
-  // Get user data from localStorage and fetch dashboard data
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    if (userData.firstName) {
-      setUser(userData);
-    }
-    
-    // Fetch dashboard data
-    fetchDashboardData(userData.id);
+    if (userData.firstName) setUser(userData);
+    if (userData.id) fetchDashboardData(userData.id);
   }, []);
 
   const fetchDashboardData = async (userId) => {
@@ -187,6 +183,15 @@ const Home = () => {
     navigate('/');
   };
 
+  const handleProtectedAction = async (e, action) => {
+    e.preventDefault();
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    const approved = await requireApproval(userData.id, 'patient');
+    if (approved) {
+      action();
+    }
+  };
+
   return (
     <div className="home-container">
       {/* Top Navbar */}
@@ -231,41 +236,62 @@ const Home = () => {
       <main className="home-content">
         {/* Quick Actions */}
         <section className="quick-actions">
-          <Link to="/book-appointment" className="action-card">
+          <a 
+            href="/book-appointment" 
+            className="action-card"
+            onClick={(e) => handleProtectedAction(e, () => navigate('/book-appointment'))}
+          >
             <div className="action-icon blue">+</div>
             <div>
               <h3>Book Appointment</h3>
               <p>Schedule a visit</p>
             </div>
-          </Link>
-          <Link to="/my-appointments" className="action-card">
+          </a>
+          <a 
+            href="/my-appointments" 
+            className="action-card"
+            onClick={(e) => handleProtectedAction(e, () => navigate('/my-appointments'))}
+          >
             <div className="action-icon green">A</div>
             <div>
               <h3>My Appointments</h3>
               <p>View all bookings</p>
             </div>
-          </Link>
-          <Link to="/find-doctors" className="action-card">
+          </a>
+          <a 
+            href="/find-doctors" 
+            className="action-card"
+            onClick={(e) => handleProtectedAction(e, () => navigate('/find-doctors'))}
+          >
             <div className="action-icon orange">D</div>
             <div>
               <h3>Find Doctors</h3>
               <p>Browse specialists</p>
             </div>
-          </Link>
-          <Link to="/medical-records" className="action-card">
+          </a>
+          <a 
+            href="/medical-records" 
+            className="action-card"
+            onClick={(e) => handleProtectedAction(e, () => navigate('/medical-records'))}
+          >
             <div className="action-icon purple">R</div>
             <div>
               <h3>Medical Records</h3>
               <p>View history</p>
             </div>
-          </Link>
+          </a>
         </section>
 
         {/* Upcoming Appointments */}
         <section className="appointments-section">
           <div className="section-header">
             <h2>Upcoming Appointments</h2>
-            <Link to="/my-appointments">View All</Link>
+            <a 
+              href="/my-appointments"
+              onClick={(e) => handleProtectedAction(e, () => navigate('/my-appointments'))}
+            >
+              View All
+            </a>
           </div>
           {loading ? (
             <div className="loading-state">
@@ -291,17 +317,24 @@ const Home = () => {
                   <div className="appointment-actions">
                     <button 
                       className="btn-sm btn-cancel"
-                      onClick={() => handleCancelAppointment(apt.id)}
+                      onClick={async () => {
+                        const userData = JSON.parse(localStorage.getItem('user') || '{}');
+                        const approved = await requireApproval(userData.id, 'patient');
+                        if (approved) {
+                          handleCancelAppointment(apt.id);
+                        }
+                      }}
                     >
                       Cancel
                     </button>
-                    <Link 
-                      to="/book-appointment" 
+                    <a 
+                      href="/book-appointment"
                       className="btn-sm btn-reschedule"
                       style={{ textDecoration: 'none', display: 'inline-block', textAlign: 'center' }}
+                      onClick={(e) => handleProtectedAction(e, () => navigate('/book-appointment'))}
                     >
                       Reschedule
-                    </Link>
+                    </a>
                   </div>
                 </div>
               ))}
@@ -309,7 +342,13 @@ const Home = () => {
           ) : (
             <div className="no-appointments">
               <p>No upcoming appointments</p>
-              <Link to="/book-appointment" className="btn btn-primary">Book Now</Link>
+              <a 
+                href="/book-appointment" 
+                className="btn btn-primary"
+                onClick={(e) => handleProtectedAction(e, () => navigate('/book-appointment'))}
+              >
+                Book Now
+              </a>
             </div>
           )}
         </section>
@@ -318,7 +357,12 @@ const Home = () => {
         <section className="specialties-section">
           <div className="section-header">
             <h2>Popular Specialties</h2>
-            <Link to="/find-doctors">View All</Link>
+            <a 
+              href="/find-doctors"
+              onClick={(e) => handleProtectedAction(e, () => navigate('/find-doctors'))}
+            >
+              View All
+            </a>
           </div>
           {loading ? (
             <div className="loading-state">
@@ -328,11 +372,16 @@ const Home = () => {
           ) : (
             <div className="specialties-grid">
               {specialties.map((spec, index) => (
-                <Link to={`/find-doctors?specialty=${spec.name}`} key={index} className="specialty-card">
+                <a 
+                  href={`/find-doctors?specialty=${spec.name}`} 
+                  key={index} 
+                  className="specialty-card"
+                  onClick={(e) => handleProtectedAction(e, () => navigate(`/find-doctors?specialty=${spec.name}`))}
+                >
                   <div className="specialty-icon">{spec.name[0]}</div>
                   <h4>{spec.name}</h4>
                   <p>{spec.doctors}</p>
-                </Link>
+                </a>
               ))}
             </div>
           )}
@@ -342,7 +391,12 @@ const Home = () => {
         <section className="doctors-section">
           <div className="section-header">
             <h2>Top Rated Doctors</h2>
-            <Link to="/find-doctors">View All</Link>
+            <a 
+              href="/find-doctors"
+              onClick={(e) => handleProtectedAction(e, () => navigate('/find-doctors'))}
+            >
+              View All
+            </a>
           </div>
           {loading ? (
             <div className="loading-state">
@@ -352,7 +406,12 @@ const Home = () => {
           ) : (
             <div className="doctors-grid">
               {topDoctors.map((doctor) => (
-                <Link to={`/doctor/${doctor.id}`} key={doctor.id} className="doctor-card">
+                <a 
+                  href={`/doctor/${doctor.id}`} 
+                  key={doctor.id} 
+                  className="doctor-card"
+                  onClick={(e) => handleProtectedAction(e, () => navigate(`/doctor/${doctor.id}`))}
+                >
                   <div className="doctor-avatar">
                     {doctor.profilePhoto ? (
                       <img 
@@ -377,7 +436,7 @@ const Home = () => {
                       <span>{doctor.experience}</span>
                     </div>
                   </div>
-                </Link>
+                </a>
               ))}
             </div>
           )}
