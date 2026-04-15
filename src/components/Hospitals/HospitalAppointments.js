@@ -86,7 +86,14 @@ const HospitalAppointments = () => {
                 </div>
                 <button
                   className="book-hospital-btn"
-                  onClick={() => navigate('/signup')}
+                  onClick={() => {
+                    const isLoggedIn = !!localStorage.getItem('token');
+                    if (isLoggedIn) {
+                      navigate('/book-appointment', { state: { hospitalFilter: hospital.name } });
+                    } else {
+                      navigate('/login?redirect=/hospitals');
+                    }
+                  }}
                 >
                   Book an Appointment →
                 </button>

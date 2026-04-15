@@ -276,7 +276,11 @@ const LandingPage = () => {
                     return key ? specialtyCounts[key] : 0;
                   })()} Doctors
                 </p>
-                <Link to="/find-doctors" className="consult-btn">Consult Now</Link>
+                <Link
+                  to={isLoggedIn && userRole === 'patient' ? '/book-appointment' : '/auth?role=patient&mode=signup'}
+                  state={isLoggedIn && userRole === 'patient' ? { specialtyFilter: spec.name } : undefined}
+                  className="consult-btn"
+                >Consult Now</Link>
               </div>
             ))}
           </div>
@@ -298,7 +302,15 @@ const LandingPage = () => {
               </div>
               <h3>{hospital.name}</h3>
               <p className="location">{hospital.location}</p>
-              <Link to="/signup" className="btn btn-primary btn-small">Book an Appointment</Link>
+              {isLoggedIn && userRole === 'patient' ? (
+                <Link
+                  to="/book-appointment"
+                  state={{ hospitalFilter: hospital.name }}
+                  className="btn btn-primary btn-small"
+                >Book an Appointment</Link>
+              ) : (
+                <Link to="/auth?role=patient&mode=signup" className="btn btn-primary btn-small">Book an Appointment</Link>
+              )}
             </div>
           ))}
         </div>

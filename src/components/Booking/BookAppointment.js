@@ -6,15 +6,17 @@ const BookAppointment = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const preSelectedDoctor = location.state?.preSelectedDoctor;
+  const hospitalFilter = location.state?.hospitalFilter || null; // from hospital page
+  const specialtyFilter = location.state?.specialtyFilter || null; // from specialty card
   
   const [step, setStep] = useState(preSelectedDoctor ? 2 : 1);
-  const [searchMode, setSearchMode] = useState('specialty');
+  const [searchMode, setSearchMode] = useState(hospitalFilter ? 'browse' : 'specialty');
   const [searchTerm, setSearchTerm] = useState('');
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [patientStatus] = useState('approved'); // approval gate removed
   const [booking, setBooking] = useState({
-    specialty: preSelectedDoctor?.specialtyId || '',
+    specialty: preSelectedDoctor?.specialtyId || specialtyFilter || '',
     doctor: preSelectedDoctor || null,
     date: null,
     tokenNumber: null,
@@ -77,13 +79,40 @@ const BookAppointment = () => {
   }, []);
 
   const getFilteredDoctors = () => {
+    let filtered = doctors;
+
+    // Hospital filter — from hospital booking page
+    if (hospitalFilter) {
+      filtered = filtered.filter(doc =>
+        doc.hospital && doc.hospital.toLowerCase().includes(hospitalFilter.toLowerCase())
+      );
+      // In hospital mode, show all filtered doctors (browse mode)
+      if (searchTerm) {
+        filtered = filtered.filter(doc =>
+          doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          doc.specialty.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      return filtered;
+    }
+
     if (searchMode === 'browse') {
-      return doctors.filter(doc => 
+      return filtered.filter(doc =>
         doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         doc.specialty.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-    return doctors.filter(doc => doc.specialtyId === booking.specialty);
+
+    // Specialty mode — match by specialtyId or by specialty name
+    return filtered.filter(doc => {
+      if (doc.specialtyId === booking.specialty) return true;
+      // Also match by specialty name for doctors registered via new signup
+      if (booking.specialty && doc.specialty) {
+        return doc.specialty.toLowerCase().includes(booking.specialty.toLowerCase()) ||
+               booking.specialty.toLowerCase().includes(doc.specialty.toLowerCase());
+      }
+      return false;
+    });
   };
 
   const getAvailableDates = async () => {
@@ -531,6 +560,9 @@ const BookAppointment = () => {
             ← Back to {preSelectedDoctor ? "Find Doctors" : "Home"}
           </Link>
           <h1>Book an Appointment</h1>
+          {hospitalFilter && (
+            <p className="booking-subtitle">Doctors at {hospitalFilter}</p>
+          )}
           {preSelectedDoctor && (
             <p className="booking-subtitle">Complete your booking with {preSelectedDoctor.name}</p>
           )}
@@ -603,7 +635,15 @@ const BookAppointment = () => {
             {/* Step 1: Select Specialty & Doctor */}
             {step === 1 && (
               <>
-                {/* Search Mode Toggle */}
+                {/* Hospital filter banner */}
+                {hospitalFilter && (
+                  <div style={{ background: '#f0fdfa', border: '1px solid #d1faf4', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.88rem', color: '#065f46' }}>
+                    Showing doctors available at <strong>{hospitalFilter}</strong>
+                  </div>
+                )}
+
+                {/* Search Mode Toggle — hide when hospital filter is active */}
+                {!hospitalFilter && (
                 <div className="search-mode-toggle">
                   <button 
                     className={`mode-btn ${searchMode === 'specialty' ? 'active' : ''}`}
@@ -618,6 +658,7 @@ const BookAppointment = () => {
                     Browse All Doctors
                   </button>
                 </div>
+                )}
 
                 {loading ? (
                   <div className="loading-state">
@@ -626,7 +667,61 @@ const BookAppointment = () => {
                   </div>
                 ) : (
                   <>
-                    {searchMode === 'specialty' ? (
+                    {/* Hospital filter mode — show doctors directly */}
+                    {hospitalFilter ? (
+                      <div className="doctor-browse">
+                        <h2>Available Doctors</h2>
+                        <div className="doctor-search-bar">
+                          <span className="search-icon">S</span>
+                          <input
+                            type="text"
+                            placeholder="Search by name or specialty..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                          />
+                          {searchTerm && (
+                            <button className="clear-search" onClick={() => setSearchTerm('')}>X</button>
+                          )}
+                        </div>
+                        <div className="doctors-list browse-list">
+                          {filteredDoctors.length > 0 ? (
+                            filteredDoctors.map((doc) => (
+                              <div
+                                key={doc.id}
+                                className={`doctor-option ${booking.doctor?.id === doc.id ? 'selected' : ''}`}
+                                onClick={() => setBooking({ ...booking, doctor: doc, specialty: doc.specialtyId })}
+                              >
+                                <div className="avatar">
+                                  {doc.profilePhoto ? (
+                                    <img src={`http://localhost:5001/${doc.profilePhoto}`} alt={doc.name}
+                                      onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+                                  ) : null}
+                                  <div className="avatar-fallback" style={{ display: doc.profilePhoto ? 'none' : 'flex' }}>
+                                    {doc.name.split(' ')[1]?.[0] || 'D'}
+                                  </div>
+                                </div>
+                                <div className="info">
+                                  <h3>{doc.name}</h3>
+                                  <p>{doc.specialty} • {doc.experience} experience</p>
+                                  <div className="stats">
+                                    <span className="rating">{doc.rating.toFixed(1)} rating</span>
+                                    <span>{doc.patients} patients</span>
+                                    <span>Rs. {doc.fee}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="no-results">
+                              <p>No doctors found at {hospitalFilter}.</p>
+                              <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem' }}>
+                                Doctors appear here once they register and select this hospital.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : searchMode === 'specialty' ? (
                       <>
                         <div className="specialty-select">
                           <h2>Select Specialty</h2>
