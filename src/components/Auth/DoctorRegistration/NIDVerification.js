@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import '../Auth.css';
-import './DoctorRegistration.css';
+import { useNavigate, useLocation } from 'react-router-dom';
+import DoctorRegLayout from './DoctorRegLayout';
+import './DoctorRegLayout.css';
 
 const DoctorNIDVerification = () => {
   const navigate = useNavigate();
@@ -142,87 +142,63 @@ const DoctorNIDVerification = () => {
   };
 
   return (
-    <div className="reg-container">
-      <div className="reg-card">
-        <div className="reg-header">
-          <Link to="/" className="reg-logo">
-            <img src="/logo.png" alt="HealthMandala" />
-            <span>HealthMandala</span>
-          </Link>
-          <div className="step-indicator">
-            <div className="step completed">1</div>
-            <div className="step-line completed"></div>
-            <div className="step completed">2</div>
-            <div className="step-line completed"></div>
-            <div className="step completed">3</div>
-            <div className="step-line completed"></div>
-            <div className="step active">4</div>
-          </div>
-          <h2>NID Verification</h2>
-          <p>Upload your National ID</p>
+    <DoctorRegLayout step={4} title="NID Verification" subtitle="Upload your National ID card">
+      <form className="reg-form" onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label>NID Number *</label>
+          <input type="text" name="nidNumber" placeholder="Enter your NID number" value={formData.nidNumber} onChange={handleChange} required />
         </div>
 
-        <form className="reg-form" onSubmit={handleSubmit}>
+        <div className="form-row">
           <div className="form-group">
-            <label>NID Number *</label>
-            <input type="text" name="nidNumber" placeholder="Enter your NID number" value={formData.nidNumber} onChange={handleChange} required />
-          </div>
-
-          <div className="upload-section">
-            <label>Upload NID Photos *</label>
-            <div className="upload-grid">
-              <div className="upload-box">
-                <p className="upload-label">Front Side</p>
-                {frontPreview ? (
-                  <div className="image-preview">
-                    <img src={frontPreview} alt="NID Front" />
-                    <button type="button" className="remove-btn" onClick={() => { setFrontPreview(null); setFormData({...formData, nidFront: null}); }}>X</button>
-                  </div>
-                ) : (
-                  <label className="upload-area">
-                    <input type="file" accept="image/*" onChange={(e) => handleImageChange(e, 'front')} hidden />
-                    <div className="upload-content">
-                      <div className="upload-icon">+</div>
-                      <span>Upload</span>
-                    </div>
-                  </label>
-                )}
+            <label>Front Side *</label>
+            {frontPreview ? (
+              <div className="image-preview" style={{ aspectRatio: '16/10', borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
+                <img src={frontPreview} alt="NID Front" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button type="button" className="remove-btn" onClick={() => { setFrontPreview(null); setFormData({...formData, nidFront: null}); }}>✕</button>
               </div>
-              <div className="upload-box">
-                <p className="upload-label">Back Side</p>
-                {backPreview ? (
-                  <div className="image-preview">
-                    <img src={backPreview} alt="NID Back" />
-                    <button type="button" className="remove-btn" onClick={() => { setBackPreview(null); setFormData({...formData, nidBack: null}); }}>X</button>
-                  </div>
-                ) : (
-                  <label className="upload-area">
-                    <input type="file" accept="image/*" onChange={(e) => handleImageChange(e, 'back')} hidden />
-                    <div className="upload-content">
-                      <div className="upload-icon">+</div>
-                      <span>Upload</span>
-                    </div>
-                  </label>
-                )}
+            ) : (
+              <label className="upload-area" style={{ display: 'block', cursor: 'pointer' }}>
+                <input type="file" accept="image/*" onChange={(e) => handleImageChange(e, 'front')} hidden />
+                <div className="upload-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', padding: '1rem' }}>
+                  <div className="upload-icon">+</div>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Upload Front</span>
+                </div>
+              </label>
+            )}
+          </div>
+          <div className="form-group">
+            <label>Back Side *</label>
+            {backPreview ? (
+              <div className="image-preview" style={{ aspectRatio: '16/10', borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
+                <img src={backPreview} alt="NID Back" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <button type="button" className="remove-btn" onClick={() => { setBackPreview(null); setFormData({...formData, nidBack: null}); }}>✕</button>
               </div>
-            </div>
+            ) : (
+              <label className="upload-area" style={{ display: 'block', cursor: 'pointer' }}>
+                <input type="file" accept="image/*" onChange={(e) => handleImageChange(e, 'back')} hidden />
+                <div className="upload-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', padding: '1rem' }}>
+                  <div className="upload-icon">+</div>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Upload Back</span>
+                </div>
+              </label>
+            )}
           </div>
+        </div>
 
-          <div className="info-box">
-            <div className="info-icon">i</div>
-            <p>Your documents will be verified by our team. This usually takes 1-2 business days.</p>
-          </div>
+        <div style={{ background: '#f0fdfa', borderRadius: 10, padding: '0.75rem 1rem', borderLeft: '3px solid #00a896', fontSize: '0.8rem', color: '#475569', marginBottom: '0.5rem' }}>
+          Your documents will be reviewed by our team within 1–2 business days.
+        </div>
 
-          {error && <p className="error-message">{error}</p>}
-          <div className="btn-group">
-            <button type="button" className="reg-btn secondary" onClick={handleBack}>Back</button>
-            <button type="submit" className="reg-btn" disabled={isSubmitting}>
-              {isSubmitting ? 'Submitting...' : 'Submit'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        {error && <p className="error-message">{error}</p>}
+        <div className="btn-group">
+          <button type="button" className="reg-btn secondary" onClick={handleBack}>← Back</button>
+          <button type="submit" className="reg-btn" disabled={isSubmitting}>
+            {isSubmitting ? 'Submitting...' : 'Submit Application'}
+          </button>
+        </div>
+      </form>
+    </DoctorRegLayout>
   );
 };
 

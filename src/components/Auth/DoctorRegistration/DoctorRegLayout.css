@@ -1,0 +1,205 @@
+.drl-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: linear-gradient(135deg, #e8f5f3 0%, #f0fdfa 100%);
+  padding: calc(70px + 1.5rem) 5% 1.5rem;
+  font-family: 'Segoe UI', sans-serif;
+  box-sizing: border-box;
+}
+
+.drl-card {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 70px - 3rem);
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(109, 188, 149, 0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+}
+
+/* Left panel — reuse ap-overlay-panel but always on left */
+.drl-left-panel {
+  position: relative !important;
+  left: 0 !important;
+  width: 38% !important;
+  border-radius: 20px 0 0 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  z-index: 1 !important;
+  background: linear-gradient(135deg, #6dbc95 0%, #60b09c 60%, #4e9d8a 100%) !important;
+  overflow: hidden !important;
+}
+
+/* Right panel */
+.drl-right-panel {
+  flex: 1;
+  background: #fff;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 4%;
+  overflow-y: auto;
+  border-radius: 0 20px 20px 0;
+}
+
+.drl-form-wrapper {
+  width: 100%;
+  max-width: 480px;
+  padding: 0.5rem 0;
+}
+
+/* Form fields inside layout — match AuthPage ap-input style */
+.drl-form-wrapper .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  margin-bottom: 0.7rem;
+}
+
+.drl-form-wrapper .form-group label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #1e293b;
+  letter-spacing: 0.2px;
+}
+
+.drl-form-wrapper .form-group input,
+.drl-form-wrapper .form-group select,
+.drl-form-wrapper .form-group textarea {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  background: #fff;
+  color: #1e293b;
+  margin-bottom: 0;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', sans-serif;
+  appearance: auto;
+}
+
+.drl-form-wrapper .form-group input:focus,
+.drl-form-wrapper .form-group select:focus,
+.drl-form-wrapper .form-group textarea:focus {
+  outline: none;
+  border-color: #6dbc95;
+  box-shadow: 0 0 0 3px rgba(109,188,149,0.15);
+  background: #fff;
+}
+.drl-form-wrapper .form-group input::placeholder,
+.drl-form-wrapper .form-group textarea::placeholder {
+  color: #b0bec5;
+}
+
+.drl-form-wrapper .form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Buttons — match ap-submit style */
+.drl-form-wrapper .btn-group {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.drl-form-wrapper .reg-btn {
+  flex: 1;
+  padding: 0.78rem;
+  background: #6dbc95;
+  color: #fff;
+  border: none;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.25s, transform 0.15s;
+  box-shadow: 0 4px 14px rgba(109,188,149,0.35);
+  letter-spacing: 0.05em;
+}
+
+.drl-form-wrapper .reg-btn:hover { background: #5aaa82; transform: translateY(-1px); }
+.drl-form-wrapper .reg-btn:active { transform: translateY(0); }
+.drl-form-wrapper .reg-btn:disabled { background: #b2d8c8; box-shadow: none; cursor: not-allowed; transform: none; }
+
+.drl-form-wrapper .reg-btn.secondary {
+  background: #f1f5f9;
+  color: #475569;
+  box-shadow: none;
+}
+.drl-form-wrapper .reg-btn.secondary:hover { background: #e2e8f0; transform: none; }
+
+/* Error — match ap-error */
+.drl-form-wrapper .error-message {
+  color: #dc2626;
+  font-size: 0.8rem;
+  background: #fef2f2;
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+/* Upload areas */
+.drl-form-wrapper .upload-area {
+  border: 1.5px dashed #d1d5db;
+  border-radius: 10px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #f8fffe;
+}
+.drl-form-wrapper .upload-area:hover { border-color: #6dbc95; background: #f0fdfa; }
+
+/* Profile photo */
+.drl-form-wrapper .profile-upload-area {
+  width: 90px; height: 90px;
+  border: 1.5px dashed #d1d5db;
+  border-radius: 50%;
+  cursor: pointer;
+  background: #f8fffe;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.drl-form-wrapper .profile-upload-area:hover { border-color: #6dbc95; background: #f0fdfa; }
+
+/* Form row */
+.drl-form-wrapper .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+/* Title and subtitle */
+.drl-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 0.3rem;
+  text-align: center;
+}
+
+.drl-subtitle {
+  font-size: 0.84rem;
+  color: #64748b;
+  margin-bottom: 1.25rem;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .drl-card { flex-direction: column; height: auto; border-radius: 16px; }
+  .drl-left-panel { width: 100% !important; border-radius: 16px 16px 0 0 !important; min-height: 140px !important; padding: 1.25rem !important; }
+  .drl-left-panel h2 { font-size: 1.3rem !important; }
+  .drl-left-panel p { display: none; }
+  .drl-right-panel { border-radius: 0 0 16px 16px; padding: 1.5rem; }
+  .drl-form-wrapper .form-row { grid-template-columns: 1fr; }
+  .drl-card { overflow-y: auto; }
+}

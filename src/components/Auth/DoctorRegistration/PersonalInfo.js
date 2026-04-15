@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import '../Auth.css';
-import './DoctorRegistration.css';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import DoctorRegLayout from './DoctorRegLayout';
+import './DoctorRegLayout.css';
 
 const DoctorPersonalInfo = () => {
   const navigate = useNavigate();
@@ -55,69 +55,47 @@ const DoctorPersonalInfo = () => {
   };
 
   return (
-    <div className="reg-container">
-      <div className="reg-card">
-        <div className="reg-header">
-          <Link to="/" className="reg-logo">
-            <img src="/logo.png" alt="HealthMandala" />
-            <span>HealthMandala</span>
-          </Link>
-          <div className="step-indicator">
-            <div className="step active">1</div>
-            <div className="step-line"></div>
-            <div className="step">2</div>
-            <div className="step-line"></div>
-            <div className="step">3</div>
-            <div className="step-line"></div>
-            <div className="step">4</div>
-            <div className="step-line"></div>
-            <div className="step">5</div>
+    <DoctorRegLayout step={1} title="Personal Information" subtitle="Tell us about yourself">
+      <form className="reg-form" onSubmit={handleNext}>
+        <div className="profile-photo-section" style={{ marginBottom: '1rem' }}>
+          <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#1e293b', display: 'block', marginBottom: '0.5rem' }}>Profile Photo</label>
+          <div className="profile-upload-wrapper">
+            {profilePreview ? (
+              <div className="profile-preview">
+                <img src={profilePreview} alt="Profile" />
+                <button type="button" className="remove-btn" onClick={() => { setProfilePreview(null); setFormData({...formData, profilePhoto: null}); }}>✕</button>
+              </div>
+            ) : (
+              <label className="profile-upload-area">
+                <input type="file" accept="image/*" onChange={handleImageChange} hidden />
+                <div className="profile-upload-content">
+                  <div className="profile-icon">+</div>
+                  <span>Upload</span>
+                </div>
+              </label>
+            )}
           </div>
-          <h2>Personal Information</h2>
-          <p>Tell us about yourself</p>
         </div>
 
-        <form className="reg-form" onSubmit={handleNext}>
-          <div className="profile-photo-section">
-            <label>Profile Photo</label>
-            <div className="profile-upload-wrapper">
-              {profilePreview ? (
-                <div className="profile-preview">
-                  <img src={profilePreview} alt="Profile" />
-                  <button type="button" className="remove-btn" onClick={() => { setProfilePreview(null); setFormData({...formData, profilePhoto: null}); }}>X</button>
-                </div>
-              ) : (
-                <label className="profile-upload-area">
-                  <input type="file" accept="image/*" onChange={handleImageChange} hidden />
-                  <div className="profile-upload-content">
-                    <div className="profile-icon">+</div>
-                    <span>Upload</span>
-                  </div>
-                </label>
-              )}
-            </div>
-          </div>
+        <div className="form-group">
+          <label>Date of Birth *</label>
+          <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required />
+        </div>
 
-          <div className="form-group">
-            <label>Date of Birth *</label>
-            <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} required />
-          </div>
+        <div className="form-group">
+          <label>Gender *</label>
+          <select name="gender" value={formData.gender} onChange={handleChange} required>
+            <option value="">Select Gender</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
 
-          <div className="form-group">
-            <label>Gender *</label>
-            <select name="gender" value={formData.gender} onChange={handleChange} required>
-              <option value="">Select Gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-          {error && <p className="error-message">{error}</p>}
-          <button type="submit" className="reg-btn">Next</button>
-        </form>
-      </div>
-    </div>
+        {error && <p className="error-message">{error}</p>}
+        <button type="submit" className="reg-btn">Continue →</button>
+      </form>
+    </DoctorRegLayout>
   );
 };
 

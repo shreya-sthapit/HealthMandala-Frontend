@@ -56,6 +56,33 @@ const AuthPage = () => {
   const [popupEmail, setPopupEmail] = useState('');
   const [signupSuccess, setSignupSuccess] = useState(false);
 
+  // Password requirement visibility: 'unmet' | 'met' | 'hidden'
+  const [pwdReqs, setPwdReqs] = useState({ length: 'unmet', number: 'unmet', special: 'unmet' });
+  const pwdTimers = { length: null, number: null, special: null };
+
+  useEffect(() => {
+    const p = signupData.password;
+    const checks = {
+      length:  p.length >= 6,
+      number:  /[0-9]/.test(p),
+      special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p),
+    };
+    setPwdReqs(prev => {
+      const next = { ...prev };
+      Object.keys(checks).forEach(key => {
+        if (checks[key] && prev[key] === 'unmet') {
+          next[key] = 'met'; // show green tick
+          setTimeout(() => {
+            setPwdReqs(r => ({ ...r, [key]: 'hidden' }));
+          }, 800); // disappear after 800ms
+        } else if (!checks[key] && prev[key] === 'hidden') {
+          next[key] = 'unmet'; // reappear if user deletes
+        }
+      });
+      return next;
+    });
+  }, [signupData.password]); // eslint-disable-line
+
   // Sync mode from URL
   useEffect(() => {
     setMode(searchParams.get('mode') === 'signup' ? 'signup' : 'signin');
@@ -123,11 +150,17 @@ const AuthPage = () => {
     if (signupData.password.length < 6) {
       setSignupError('Password must be at least 6 characters'); return;
     }
+    if (!/[0-9]/.test(signupData.password)) {
+      setSignupError('Password must contain at least one number'); return;
+    }
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(signupData.password)) {
+      setSignupError('Password must contain at least one special character'); return;
+    }
     setSignupLoading(true);
     try {
       if (signupMethod === 'email') {
-        // Call backend to send verification email via Nodemailer
-        const res = await fetch('http://localhost:5001/api/auth/send-verification', {
+        // Send OTP to email
+        const res = await fetch('http://localhost:5001/api/auth/send-email-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -140,20 +173,17 @@ const AuthPage = () => {
         });
         const data = await res.json();
         if (data.success) {
-        // Store registration data in sessionStorage for resend (password excluded from state for security)
-        sessionStorage.setItem('pendingVerification', JSON.stringify({
-          firstName: signupData.firstName,
-          lastName: signupData.lastName,
-          email: signupData.email,
-          password: signupData.password,
-          role: lockedRole,
-        }));
-        setPopupEmail(signupData.email);
-        setShowPopup(true);
-          setSignupSuccess(true);
-      } else {
-        setSignupError(data.error || 'Failed to send verification email.');
-      }
+          navigate('/verify-email', {
+            state: {
+              email: signupData.email,
+              firstName: signupData.firstName,
+              lastName: signupData.lastName,
+              role: lockedRole,
+            }
+          });
+        } else {
+          setSignupError(data.error || 'Failed to send OTP.');
+        }
       } else {
         const phone = `+977${signupData.phone}`;
         const res = await fetch('http://localhost:5001/api/otp/send', {
@@ -232,18 +262,25 @@ const AuthPage = () => {
 
           <form onSubmit={handleLogin}>
             {loginMethod === 'email' ? (
-              <input className="ap-input" type="email" name="email" placeholder="Email" value={loginData.email}
-                onChange={e => setLoginData({ ...loginData, email: e.target.value })} required />
+              <div className="ap-float">
+                <input type="email" name="email" placeholder=" " value={loginData.email}
+                  onChange={e => setLoginData({ ...loginData, email: e.target.value })} required />
+                <label>Email</label>
+              </div>
             ) : (
               <div className="ap-phone-row">
                 <span className="ap-cc">+977</span>
-                <input className="ap-input" type="tel" name="phone" placeholder="Phone number" value={loginData.phone}
-                  onChange={e => setLoginData({ ...loginData, phone: e.target.value })} required />
+                <div className="ap-float" style={{ flex: 1, marginBottom: 0 }}>
+                  <input type="tel" name="phone" placeholder=" " value={loginData.phone}
+                    onChange={e => setLoginData({ ...loginData, phone: e.target.value.replace(/\D/g, '') })} required />
+                  <label>Phone number</label>
+                </div>
               </div>
             )}
-            <div className="ap-pwd-wrap">
-              <input className="ap-input" type={showLoginPwd ? 'text' : 'password'} placeholder="Password"
-                value={loginData.password} onChange={e => setLoginData({ ...loginData, password: e.target.value })} required />
+            <div className="ap-float">
+              <input type={showLoginPwd ? 'text' : 'password'} placeholder=" "
+                value={loginData.password} onChange={e => setLoginData({ ...loginData, password: e.target.value })} required style={{ paddingRight: '3rem' }} />
+              <label>Password</label>
               <button type="button" className="ap-eye" onClick={() => setShowLoginPwd(v => !v)}>
                 {showLoginPwd ? <EyeOffIcon /> : <EyeIcon />}
               </button>
@@ -268,31 +305,76 @@ const AuthPage = () => {
 
           <form onSubmit={handleSignup}>
             <div className="ap-row">
-              <input className="ap-input" type="text" placeholder="First Name" value={signupData.firstName}
-                onChange={e => setSignupData({ ...signupData, firstName: e.target.value })} required />
-              <input className="ap-input" type="text" placeholder="Last Name" value={signupData.lastName}
-                onChange={e => setSignupData({ ...signupData, lastName: e.target.value })} required />
+              <div className="ap-float">
+                <input type="text" placeholder=" " value={signupData.firstName}
+                  onChange={e => setSignupData({ ...signupData, firstName: e.target.value })} required />
+                <label>First Name</label>
+              </div>
+              <div className="ap-float">
+                <input type="text" placeholder=" " value={signupData.lastName}
+                  onChange={e => setSignupData({ ...signupData, lastName: e.target.value })} required />
+                <label>Last Name</label>
+              </div>
             </div>
             {signupMethod === 'email' ? (
-              <input className="ap-input" type="email" placeholder="Email" value={signupData.email}
-                onChange={e => setSignupData({ ...signupData, email: e.target.value })} required />
+              <div className="ap-float">
+                <input type="email" placeholder=" " value={signupData.email}
+                  onChange={e => setSignupData({ ...signupData, email: e.target.value })} required />
+                <label>Email</label>
+              </div>
             ) : (
               <div className="ap-phone-row">
                 <span className="ap-cc">+977</span>
-                <input className="ap-input" type="tel" placeholder="Phone number" value={signupData.phone}
-                  onChange={e => setSignupData({ ...signupData, phone: e.target.value })} required />
+                <div className="ap-float" style={{ flex: 1, marginBottom: 0 }}>
+                  <input type="tel" placeholder=" " value={signupData.phone}
+                    onChange={e => setSignupData({ ...signupData, phone: e.target.value.replace(/\D/g, '') })} required />
+                  <label>Phone number</label>
+                </div>
               </div>
             )}
-            <div className="ap-pwd-wrap">
-              <input className="ap-input" type={showSignupPwd ? 'text' : 'password'} placeholder="Password"
-                value={signupData.password} onChange={e => setSignupData({ ...signupData, password: e.target.value })} required />
+            <div className="ap-float">
+              <input type={showSignupPwd ? 'text' : 'password'} placeholder=" "
+                value={signupData.password} onChange={e => setSignupData({ ...signupData, password: e.target.value })} required style={{ paddingRight: '3rem' }} />
+              <label>Password</label>
               <button type="button" className="ap-eye" onClick={() => setShowSignupPwd(v => !v)}>
                 {showSignupPwd ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             </div>
-            <div className="ap-pwd-wrap">
-              <input className="ap-input" type={showConfirmPwd ? 'text' : 'password'} placeholder="Confirm Password"
-                value={signupData.confirmPassword} onChange={e => setSignupData({ ...signupData, confirmPassword: e.target.value })} required />
+            {signupData.password && (pwdReqs.length !== 'hidden' || pwdReqs.number !== 'hidden' || pwdReqs.special !== 'hidden') && (
+              <div style={{ fontSize: '0.75rem', marginBottom: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                {pwdReqs.length !== 'hidden' && (
+                  <span style={{
+                    color: pwdReqs.length === 'met' ? '#059669' : '#dc2626',
+                    transition: 'opacity 0.3s, color 0.3s',
+                    opacity: pwdReqs.length === 'met' ? 0.7 : 1,
+                  }}>
+                    {pwdReqs.length === 'met' ? '✓' : '✗'} At least 6 characters
+                  </span>
+                )}
+                {pwdReqs.number !== 'hidden' && (
+                  <span style={{
+                    color: pwdReqs.number === 'met' ? '#059669' : '#dc2626',
+                    transition: 'opacity 0.3s, color 0.3s',
+                    opacity: pwdReqs.number === 'met' ? 0.7 : 1,
+                  }}>
+                    {pwdReqs.number === 'met' ? '✓' : '✗'} At least one number
+                  </span>
+                )}
+                {pwdReqs.special !== 'hidden' && (
+                  <span style={{
+                    color: pwdReqs.special === 'met' ? '#059669' : '#dc2626',
+                    transition: 'opacity 0.3s, color 0.3s',
+                    opacity: pwdReqs.special === 'met' ? 0.7 : 1,
+                  }}>
+                    {pwdReqs.special === 'met' ? '✓' : '✗'} At least one special character
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="ap-float">
+              <input type={showConfirmPwd ? 'text' : 'password'} placeholder=" "
+                value={signupData.confirmPassword} onChange={e => setSignupData({ ...signupData, confirmPassword: e.target.value })} required style={{ paddingRight: '3rem' }} />
+              <label>Confirm Password</label>
               <button type="button" className="ap-eye" onClick={() => setShowConfirmPwd(v => !v)}>
                 {showConfirmPwd ? <EyeOffIcon /> : <EyeIcon />}
               </button>

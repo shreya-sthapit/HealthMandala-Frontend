@@ -1,39 +1,29 @@
-import { useState, useEffect } from 'react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './AuthPage.css';
 
 const VerifyEmail = () => {
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const email = location.state?.email || '';
   const firstName = location.state?.firstName || '';
-  const pendingData = JSON.parse(sessionStorage.getItem('pendingVerification') || '{}');
+  const lastName = location.state?.lastName || '';
+  const role = location.state?.role || 'patient';
 
-  const token = searchParams.get('token');
-  const status = searchParams.get('status');
-
-  const [isResending, setIsResending] = useState(false);
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState('');
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const inputRefs = useRef([]);
 
-  // Forward token to backend when user clicks email link
   useEffect(() => {
-    if (token) {
-      window.location.href = `http://localhost:5001/api/auth/verify-email?token=${token}`;
-    }
-  }, [token]);
+    inputRefs.current[0]?.focus();
+  }, []);
 
-  // Clear sessionStorage on success
-  useEffect(() => {
-    if (status && status !== 'error') {
-      sessionStorage.removeItem('pendingVerification');
-    }
-  }, [status]);
-
-  // Countdown
   useEffect(() => {
     if (countdown > 0) {
       const t = setTimeout(() => setCountdown(c => c - 1), 1000);
@@ -43,113 +33,144 @@ const VerifyEmail = () => {
     }
   }, [countdown]);
 
-  // Status messages
-  useEffect(() => {
-    if (status === 'expired') { setMessage('Verification link has expired. Please request a new one.'); setMessageType('error'); }
-    else if (status === 'invalid') { setMessage('Invalid verification link. Please request a new one.'); setMessageType('error'); }
-    else if (status === 'error') { setMessage('Something went wrong. Please try again.'); setMessageType('error'); }
-    else if (status === 'already-verified') { setMessage('Email already verified. You can sign in.'); setMessageType('success'); }
-  }, [status]);
+  const handleChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return;
+    const newOtp = [...otp];
+    newOtp[index] = value.slice(-1);
+    setOtp(newOtp);
+    setError('');
+    if (value && index < 5) inputRefs.current[index + 1]?.focus();
+  };
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e) => {
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pasted.length === 6) {
+      setOtp(pasted.split(''));
+      inputRefs.current[5]?.focus();
+    }
+  };
+
+  const handleVerify = async () => {
+    const code = otp.join('');
+    if (code.length < 6) { setError('Please enter the 6-digit code.'); return; }
+    setLoading(true); setError('');
+    try {
+      const res = await fetch('http://localhost:5001/api/auth/verify-email-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp: code }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        // Store token and user — log them in immediately
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          localStorage.setItem('userRole', data.user.role);
+        }
+        const redirectPath = data.user?.role === 'doctor' ? '/doctor-dashboard' : '/register/personal';
+        navigate(redirectPath, {
+          state: { userId: data.user.id, firstName, lastName, email, role }
+        });
+      } else {
+        setError(data.error || 'Invalid OTP. Please try again.');
+      }
+    } catch { setError('Could not connect to server. Please try again.'); }
+    finally { setLoading(false); }
+  };
 
   const handleResend = async () => {
     if (!canResend) return;
-    const data = pendingData;
-    if (!data.email) { setMessage('Cannot resend — please sign up again.'); setMessageType('error'); return; }
-    setIsResending(true); setMessage('');
+    setResending(true); setResendMsg('');
     try {
-      const res = await fetch('http://localhost:5001/api/auth/resend-verification', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+      const res = await fetch('http://localhost:5001/api/auth/resend-email-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
       });
-      const result = await res.json();
-      if (result.success) { setMessage('Verification email resent!'); setMessageType('success'); setCountdown(60); setCanResend(false); }
-      else { setMessage(result.error || 'Failed to resend.'); setMessageType('error'); }
-    } catch { setMessage('Failed to resend. Check your connection.'); setMessageType('error'); }
-    finally { setIsResending(false); }
+      const data = await res.json();
+      if (data.success) { setResendMsg('New OTP sent!'); setCountdown(60); setCanResend(false); setOtp(['','','','','','']); inputRefs.current[0]?.focus(); }
+      else setResendMsg(data.error || 'Failed to resend.');
+    } catch { setResendMsg('Failed to resend. Check your connection.'); }
+    finally { setResending(false); }
   };
-
-  // While forwarding token to backend
-  if (token) {
-    return (
-      <div className="ap-page">
-        <div className="ap-card" style={{ alignItems: 'center', justifyContent: 'center' }}>
-          <p style={{ color: '#00a896', fontWeight: 600, fontSize: '1.1rem' }}>Verifying your email...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="ap-page">
-      <div className="ap-card">
-
-        {/* ── Teal left panel ── */}
-        <div className="ap-overlay-panel" style={{ position: 'relative', left: 0, width: '50%', borderRadius: '20px 0 0 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2.5rem 2rem', textAlign: 'center', color: '#fff', zIndex: 1 }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✉️</div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#fff', marginBottom: '0.75rem' }}>Almost There!</h2>
-          <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.82)', lineHeight: 1.6, maxWidth: 220, marginBottom: '1.5rem' }}>
-            Just one more step — verify your email to activate your account.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', width: '100%' }}>
-            {['Secure email verification', 'Link expires in 24 hours', 'Check spam if not received'].map((t, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 10, padding: '0.65rem 1rem', fontSize: '0.84rem', color: '#fff', backdropFilter: 'blur(4px)' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                {t}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── White right panel ── */}
-        <div className="ap-form-panel ap-signin-panel" style={{ opacity: 1, transform: 'none', pointerEvents: 'all', right: 0, left: 'auto' }}>
+      <div className="ap-card" style={{ minHeight: 'auto' }}>
+        <div style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem 4%', background: '#fff', borderRadius: 20 }}>
           <div style={{ width: '100%', maxWidth: 420 }}>
-            <h2 style={{ fontSize: '1.9rem', fontWeight: 800, color: '#1e293b', marginBottom: '0.5rem', textAlign: 'center' }}>
-              Verify Your Email
+
+            {/* Icon */}
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg,#00a896,#028090)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem', fontSize: '1.8rem' }}>
+              ✉️
+            </div>
+
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e293b', textAlign: 'center', marginBottom: '0.4rem' }}>
+              Check Your Email
             </h2>
+            <p style={{ textAlign: 'center', color: '#64748b', fontSize: '0.88rem', marginBottom: '0.25rem' }}>
+              {firstName ? `Hi ${firstName}! We` : 'We'}'ve sent a 6-digit code to
+            </p>
+            <p style={{ textAlign: 'center', color: '#00a896', fontWeight: 700, fontSize: '0.95rem', marginBottom: '1.75rem' }}>
+              {email}
+            </p>
 
-            {firstName && (
-              <p style={{ textAlign: 'center', color: '#64748b', fontSize: '0.88rem', marginBottom: '0.25rem' }}>
-                Hi {firstName}! We've sent a verification link to
-              </p>
-            )}
-            {(email || pendingData.email) && (
-              <p style={{ textAlign: 'center', color: '#00a896', fontWeight: 700, fontSize: '0.95rem', marginBottom: '1.25rem' }}>
-                {email || pendingData.email}
-              </p>
-            )}
-
-            {/* Steps */}
-            <div style={{ background: '#f0fdfa', borderRadius: 12, padding: '1rem', marginBottom: '1.25rem', display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {[
-                'Check your email inbox (and spam folder)',
-                'Click the "Verify Email" button in the email',
-                "You'll be redirected to complete your profile"
-              ].map((step, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', padding: '0.65rem 0', borderBottom: i < 2 ? '1px solid #e2e8f0' : 'none' }}>
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#00a896', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.78rem', fontWeight: 700, flexShrink: 0 }}>{i + 1}</div>
-                  <p style={{ color: '#475569', fontSize: '0.85rem', lineHeight: 1.5, margin: 0, paddingTop: 3 }}>{step}</p>
-                </div>
+            {/* OTP inputs */}
+            <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center', marginBottom: '1.25rem' }} onPaste={handlePaste}>
+              {otp.map((digit, i) => (
+                <input
+                  key={i}
+                  ref={el => inputRefs.current[i] = el}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={e => handleChange(i, e.target.value)}
+                  onKeyDown={e => handleKeyDown(i, e)}
+                  style={{
+                    width: 52, height: 58, textAlign: 'center', fontSize: '1.5rem', fontWeight: 700,
+                    border: `2px solid ${digit ? '#00a896' : '#e2e8f0'}`,
+                    borderRadius: 10, outline: 'none', background: digit ? '#f0fdfa' : '#fff',
+                    color: '#1e293b', transition: 'border-color 0.2s',
+                  }}
+                />
               ))}
             </div>
 
-            {/* Status message */}
-            {message && (
-              <div className={`ap-error`} style={{ background: messageType === 'success' ? '#d1fae5' : '#fef2f2', color: messageType === 'success' ? '#059669' : '#dc2626', marginBottom: '1rem' }}>
-                {message}
-              </div>
+            {error && (
+              <div className="ap-error" style={{ marginBottom: '1rem' }}>{error}</div>
             )}
 
+            <button
+              className="ap-submit"
+              onClick={handleVerify}
+              disabled={loading || otp.join('').length < 6}
+            >
+              {loading ? 'Verifying...' : 'Verify Email'}
+            </button>
+
             {/* Resend */}
-            <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
-              <p style={{ color: '#64748b', fontSize: '0.84rem', marginBottom: '0.4rem' }}>Didn't receive the email?</p>
+            <div style={{ textAlign: 'center', marginTop: '1.25rem' }}>
+              <p style={{ color: '#64748b', fontSize: '0.84rem', marginBottom: '0.4rem' }}>Didn't receive the code?</p>
               {canResend ? (
-                <button className="ap-submit" onClick={handleResend} disabled={isResending} style={{ width: 'auto', padding: '0.6rem 1.8rem', fontSize: '0.85rem' }}>
-                  {isResending ? 'Sending...' : 'Resend Verification Email'}
+                <button
+                  onClick={handleResend}
+                  disabled={resending}
+                  style={{ background: 'none', border: 'none', color: '#00a896', fontWeight: 700, cursor: 'pointer', fontSize: '0.88rem' }}
+                >
+                  {resending ? 'Sending...' : 'Resend Code'}
                 </button>
               ) : (
-                <p style={{ color: '#00a896', fontSize: '0.84rem', fontWeight: 600 }}>
-                  Resend available in {countdown}s
-                </p>
+                <p style={{ color: '#94a3b8', fontSize: '0.84rem' }}>Resend in {countdown}s</p>
               )}
+              {resendMsg && <p style={{ color: '#00a896', fontSize: '0.82rem', marginTop: '0.4rem' }}>{resendMsg}</p>}
             </div>
 
             <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.82rem', color: '#64748b' }}>
@@ -157,7 +178,6 @@ const VerifyEmail = () => {
             </p>
           </div>
         </div>
-
       </div>
     </div>
   );

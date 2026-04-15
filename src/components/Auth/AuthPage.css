@@ -506,3 +506,118 @@
 .ap-role-link a:hover { text-decoration: underline; }
 
 /* end of AuthPage.css */
+
+/* ── Select dropdown styling ── */
+.ap-input[value=""],
+select.ap-input:invalid {
+  color: #b0bec5;
+}
+
+select.ap-input {
+  color: #1e293b;
+  padding-right: 2.2rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%2364748b'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+select.ap-input option[value=""] {
+  color: #b0bec5;
+}
+
+select.ap-input option {
+  color: #1e293b;
+}
+
+/* ── Floating label input ── */
+.ap-float {
+  position: relative;
+  margin-bottom: 0.7rem;
+}
+
+.ap-float input,
+.ap-float select {
+  width: 100%;
+  padding: 1.45rem 1rem 0.45rem;
+  min-height: 3.2rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  background: #fff;
+  color: #1e293b;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  outline: none;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.ap-float input:focus,
+.ap-float select:focus {
+  border-color: #6dbc95;
+  box-shadow: 0 0 0 3px rgba(109,188,149,0.15);
+}
+
+.ap-float label {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.88rem;
+  color: #b0bec5;
+  pointer-events: none;
+  transition: top 0.18s ease, font-size 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  background: transparent;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+/* Float up when focused or has value */
+.ap-float input:focus ~ label,
+.ap-float input:not(:placeholder-shown) ~ label,
+.ap-float select:focus ~ label,
+.ap-float.has-value label {
+  top: 0.5rem;
+  transform: translateY(0);
+  font-size: 0.68rem;
+  color: #6dbc95;
+  font-weight: 600;
+}
+
+/* Password wrapper with floating label */
+.ap-float .ap-eye {
+  position: absolute;
+  right: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  padding: 0;
+  transition: color 0.2s;
+}
+.ap-float .ap-eye:hover { color: #64748b; }
+
+.ap-float input[type="password"],
+.ap-float input[type="text"].has-eye {
+  padding-right: 3rem;
+}
+
+/* Select inside float */
+.ap-float select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%2364748b'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px;
+  padding-right: 2.2rem;
+  cursor: pointer;
+}

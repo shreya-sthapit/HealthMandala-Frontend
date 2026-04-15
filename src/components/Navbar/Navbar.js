@@ -55,7 +55,6 @@ const Navbar = () => {
   // Hide on doctor/admin dashboards and registration flows
   const hideOn = [
     '/doctor-dashboard', '/admin',
-    '/register', '/doctor-register',
   ];
   if (hideOn.some(p => path.startsWith(p))) return null;
 
@@ -158,7 +157,7 @@ const Navbar = () => {
       ) : (
         /* ── Guest buttons ── */
         <div className="global-nav-buttons">
-          <Link to="/login?role=patient" className="btn btn-outline">Login</Link>
+          <Link to="/login?role=patient" className="btn btn-outline">Sign In</Link>
           <Link to="/signup?role=patient&mode=signup" className="btn btn-primary">Sign Up</Link>
         </div>
       )}
