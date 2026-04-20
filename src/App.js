@@ -33,6 +33,7 @@ import DoctorNIDVerification from './components/Auth/DoctorRegistration/NIDVerif
 import Navbar from './components/Navbar/Navbar';
 import DoctorAuth from './components/Auth/DoctorAuth';
 import Footer from './components/Footer/Footer';
+import PartnerWithUs from './components/Partner/PartnerWithUs';
 import './App.css';
 
 // ── Guards ──────────────────────────────────────────
@@ -103,6 +104,7 @@ function App() {
           <Route path="/doctor-schedule" element={<DoctorRoute><DoctorSchedule /></DoctorRoute>} />
           <Route path="/profile" element={<PatientRoute><Profile /></PatientRoute>} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/partner" element={<PartnerWithUs />} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         </Routes>
       </div>
