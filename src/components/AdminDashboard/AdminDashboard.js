@@ -9,6 +9,8 @@ const AdminDashboard = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [pendingFilter, setPendingFilter] = useState('all');
+  const [partners, setPartners] = useState([]);
+  const [partnersLoading, setPartnersLoading] = useState(false);
 
   const stats = {
     totalUsers: 5420,
@@ -47,9 +49,8 @@ const AdminDashboard = () => {
     : pendingApprovals.filter(p => p.role === pendingFilter);
 
   useEffect(() => {
-    if (activeTab === 'appointments') {
-      fetchAppointments();
-    }
+    if (activeTab === 'appointments') fetchAppointments();
+    if (activeTab === 'partners') fetchPartners();
   }, [activeTab, selectedDate, statusFilter]);
 
   const fetchAppointments = async () => {
@@ -128,17 +129,40 @@ const AdminDashboard = () => {
     alert('User rejected!');
   };
 
+  const fetchPartners = async () => {
+    try {
+      setPartnersLoading(true);
+      const res = await fetch('http://localhost:5001/api/partner/all');
+      const data = await res.json();
+      if (data.success) setPartners(data.partners);
+    } catch (err) {
+      console.error('Failed to fetch partners:', err);
+    } finally {
+      setPartnersLoading(false);
+    }
+  };
+
+  const handlePartnerStatus = async (id, status) => {
+    const note = status === 'rejected' ? prompt('Reason for rejection (optional):') : '';
+    try {
+      const res = await fetch(`http://localhost:5001/api/partner/status/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, adminNote: note || '' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPartners(prev => prev.map(p => p._id === id ? { ...p, status, adminNote: note || '' } : p));
+      }
+    } catch (err) {
+      console.error('Failed to update partner status:', err);
+    }
+  };
+
   return (
     <div className="admin-dashboard">
       {/* Sidebar */}
       <aside className="admin-sidebar">
-        <div className="sidebar-header">
-          <Link to="/" className="admin-logo">
-            <img src="/logo.png" alt="HealthMandala" />
-            <span>Admin Panel</span>
-          </Link>
-        </div>
-
         <nav className="sidebar-nav">
           <button 
             className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
@@ -185,6 +209,16 @@ const AdminDashboard = () => {
             <span className="nav-icon">S</span>
             Settings
           </button>
+          <button
+            className={`nav-item ${activeTab === 'partners' ? 'active' : ''}`}
+            onClick={() => setActiveTab('partners')}
+          >
+            <span className="nav-icon">H</span>
+            Hospital Partners
+            {partners.filter(p => p.status === 'under_review').length > 0 && (
+              <span className="badge">{partners.filter(p => p.status === 'under_review').length}</span>
+            )}
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -208,6 +242,7 @@ const AdminDashboard = () => {
             {activeTab === 'doctors' && 'Doctor Management'}
             {activeTab === 'appointments' && 'Appointments'}
             {activeTab === 'settings' && 'Settings'}
+            {activeTab === 'partners' && 'Hospital Partner Applications'}
           </h1>
           <div className="header-actions">
             <button className="header-btn">N</button>
@@ -540,6 +575,123 @@ const AdminDashboard = () => {
               <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)' }}>
                 System settings and configuration options will be displayed here.
               </p>
+            </div>
+          )}
+
+          {/* Hospital Partners Tab */}
+          {activeTab === 'partners' && (
+            <div className="dashboard-card full-width">
+              <div className="card-header">
+                <h2>Hospital Partner Applications</h2>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
+                  {partners.filter(p => p.status === 'under_review').length} pending review
+                </span>
+              </div>
+
+              {partnersLoading ? (
+                <div style={{ padding: '2rem', textAlign: 'center' }}>Loading applications...</div>
+              ) : partners.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)' }}>
+                  No hospital partner applications yet.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
+                  {partners.map(p => (
+                    <div key={p._id} style={{
+                      background: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      padding: '1.25rem 1.5rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem'
+                    }}>
+                      {/* Header row */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-dark)', margin: '0 0 0.2rem' }}>
+                            {p.hospitalName}
+                          </h3>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
+                            {p.facilityCategory} · {p.province}, {p.district}
+                          </span>
+                        </div>
+                        <span style={{
+                          padding: '0.3rem 0.85rem',
+                          borderRadius: '20px',
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          background: p.status === 'under_review' ? '#fef3c7' : p.status === 'approved' ? '#d1fae5' : '#fee2e2',
+                          color: p.status === 'under_review' ? '#92400e' : p.status === 'approved' ? '#065f46' : '#991b1b',
+                        }}>
+                          {p.status === 'under_review' ? '🔍 Under Review' : p.status === 'approved' ? '✅ Approved' : '❌ Rejected'}
+                        </span>
+                      </div>
+
+                      {/* Details grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem 1.5rem', fontSize: '0.83rem', color: 'var(--text-light)' }}>
+                        <div><strong style={{ color: 'var(--text-dark)' }}>License:</strong> {p.dohsLicenseNumber}</div>
+                        <div><strong style={{ color: 'var(--text-dark)' }}>PAN/VAT:</strong> {p.panVatNumber}</div>
+                        <div><strong style={{ color: 'var(--text-dark)' }}>Doctors:</strong> ~{p.estimatedDoctors}</div>
+                        <div><strong style={{ color: 'var(--text-dark)' }}>Phone:</strong> {p.hospitalPhone}</div>
+                        <div><strong style={{ color: 'var(--text-dark)' }}>Email:</strong> {p.officialEmail}</div>
+                        <div><strong style={{ color: 'var(--text-dark)' }}>Contact:</strong> {p.adminName} · {p.adminPhone}</div>
+                      </div>
+
+                      {/* Documents */}
+                      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                        {p.operatingLicensePath && (
+                          <a href={`http://localhost:5001/${p.operatingLicensePath}`} target="_blank" rel="noreferrer"
+                            style={{ fontSize: '0.78rem', color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '0.25rem 0.65rem', textDecoration: 'none' }}>
+                            📄 Operating License
+                          </a>
+                        )}
+                        {p.companyRegCertPath && (
+                          <a href={`http://localhost:5001/${p.companyRegCertPath}`} target="_blank" rel="noreferrer"
+                            style={{ fontSize: '0.78rem', color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '0.25rem 0.65rem', textDecoration: 'none' }}>
+                            📄 Registration Cert
+                          </a>
+                        )}
+                        {p.taxClearancePath && (
+                          <a href={`http://localhost:5001/${p.taxClearancePath}`} target="_blank" rel="noreferrer"
+                            style={{ fontSize: '0.78rem', color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '0.25rem 0.65rem', textDecoration: 'none' }}>
+                            📄 Tax Clearance
+                          </a>
+                        )}
+                      </div>
+
+                      {p.adminNote && (
+                        <div style={{ fontSize: '0.82rem', color: '#475569', background: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '7px', borderLeft: '3px solid #00a896' }}>
+                          <strong>Admin Note:</strong> {p.adminNote}
+                        </div>
+                      )}
+
+                      {/* Submitted date */}
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                        Submitted: {new Date(p.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </div>
+
+                      {/* Actions */}
+                      {p.status === 'under_review' && (
+                        <div style={{ display: 'flex', gap: '0.6rem' }}>
+                          <button
+                            onClick={() => handlePartnerStatus(p._id, 'approved')}
+                            style={{ padding: '0.5rem 1.25rem', background: '#00a896', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handlePartnerStatus(p._id, 'rejected')}
+                            style={{ padding: '0.5rem 1.25rem', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
