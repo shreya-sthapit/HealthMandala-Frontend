@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import './AuthPage.css';
 
@@ -49,13 +49,26 @@ const DoctorAuth = () => {
   // Sign Up
   const [signupData, setSignupData] = useState({
     firstName: '', lastName: '', email: '', phone: '', password: '', confirmPassword: '',
-    nmcNumber: '', experienceYears: '', specialization: '', qualification: '', currentHospital: ''
+    nmcNumber: '', experienceYears: '', specialization: '', qualification: '', currentHospital: []
   });
   const [signupMethod, setSignupMethod] = useState('email');
   const [showSignupPwd, setShowSignupPwd] = useState(false);
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupError, setSignupError] = useState('');
+  const [hospitalDropdownOpen, setHospitalDropdownOpen] = useState(false);
+  const hospitalRef = useRef(null);
+
+  // Close hospital dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (hospitalRef.current && !hospitalRef.current.contains(e.target)) {
+        setHospitalDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   // Password hints
   const [pwdReqs, setPwdReqs] = useState({ length: 'unmet', number: 'unmet', special: 'unmet' });
@@ -180,6 +193,13 @@ const DoctorAuth = () => {
   const sd = signupData;
   const setSd = (field, val) => setSignupData(prev => ({ ...prev, [field]: val }));
 
+  const toggleHospital = (hospital) => {
+    setSd('currentHospital', sd.currentHospital.includes(hospital)
+      ? sd.currentHospital.filter(h => h !== hospital)
+      : [...sd.currentHospital, hospital]
+    );
+  };
+
   return (
     <div className="ap-page">
       <div className={`ap-card ${isSignup ? 'ap-signup-active' : ''} ${exitDir ? `ap-exit-${exitDir}` : ''}`}>
@@ -243,7 +263,7 @@ const DoctorAuth = () => {
             <button className={signupMethod === 'email' ? 'active' : ''} onClick={() => setSignupMethod('email')}>Email</button>
             <button className={signupMethod === 'phone' ? 'active' : ''} onClick={() => setSignupMethod('phone')}>Phone</button>
           </div>
-          <form onSubmit={handleSignup}>
+          <form onSubmit={handleSignup} noValidate>
             {/* Name */}
             <div className="ap-row">
               <div className="ap-float">
@@ -281,34 +301,56 @@ const DoctorAuth = () => {
             {/* Specialization + Qualification */}
             <div className="ap-row">
               <div className={`ap-float ${sd.specialization ? 'has-value' : ''}`}>
-                <select value={sd.specialization} onChange={e => setSd('specialization', e.target.value)} required style={{ color: sd.specialization ? '#1e293b' : 'transparent' }}>
-                  <option value="" disabled> </option>
+                <select value={sd.specialization} onChange={e => setSd('specialization', e.target.value)} required onInvalid={e => e.preventDefault()} style={{ color: sd.specialization ? '#1e293b' : 'transparent' }}>
+                  <option value="" disabled hidden> </option>
                   {SPECIALIZATIONS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <label>Specialization</label>
               </div>
               <div className={`ap-float ${sd.qualification ? 'has-value' : ''}`}>
-                <select value={sd.qualification} onChange={e => setSd('qualification', e.target.value)} required style={{ color: sd.qualification ? '#1e293b' : 'transparent' }}>
-                  <option value="" disabled> </option>
+                <select value={sd.qualification} onChange={e => setSd('qualification', e.target.value)} required onInvalid={e => e.preventDefault()} style={{ color: sd.qualification ? '#1e293b' : 'transparent' }}>
+                  <option value="" disabled hidden> </option>
                   {QUALIFICATIONS.map(q => <option key={q} value={q}>{q}</option>)}
                 </select>
                 <label>Qualification</label>
               </div>
             </div>
 
-            {/* Experience + Hospital */}
-            <div className="ap-row">
-              <div className="ap-float">
-                <input type="text" placeholder=" " value={sd.experienceYears} onChange={e => setSd('experienceYears', e.target.value.replace(/\D/g, ''))} inputMode="numeric" />
-                <label>Years of Experience</label>
+            {/* Experience */}
+            <div className="ap-float">
+              <input type="text" placeholder=" " value={sd.experienceYears} onChange={e => setSd('experienceYears', e.target.value.replace(/\D/g, ''))} inputMode="numeric" />
+              <label>Years of Experience</label>
+            </div>
+
+            {/* Hospital */}
+            <div className="ap-multiselect-wrap" ref={hospitalRef}>
+              <div
+                className={`ap-multiselect-trigger ${sd.currentHospital.length > 0 ? 'has-value' : ''}`}
+                onClick={(e) => { e.preventDefault(); setHospitalDropdownOpen(v => !v); }}
+              >
+                {sd.currentHospital.length > 0 && (
+                  <div className="ap-multiselect-tags">
+                    {sd.currentHospital.map(h => (
+                      <span key={h} className="ap-multiselect-tag">{h}</span>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className={`ap-float ${sd.currentHospital ? 'has-value' : ''}`}>
-                <select value={sd.currentHospital} onChange={e => setSd('currentHospital', e.target.value)} style={{ color: sd.currentHospital ? '#1e293b' : 'transparent' }}>
-                  <option value="" disabled> </option>
-                  {HOSPITALS.map(h => <option key={h} value={h}>{h}</option>)}
-                </select>
-                <label>Currently Working At</label>
-              </div>
+              <label>Currently Working At</label>
+              {hospitalDropdownOpen && (
+                <div className="ap-multiselect-dropdown">
+                  {HOSPITALS.map(h => (
+                    <label key={h} className="ap-multiselect-option">
+                      <input
+                        type="checkbox"
+                        checked={sd.currentHospital.includes(h)}
+                        onChange={() => toggleHospital(h)}
+                      />
+                      <span>{h}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Password */}
