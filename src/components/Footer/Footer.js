@@ -4,13 +4,8 @@ import './Footer.css';
 const Footer = () => {
   const { pathname } = useLocation();
 
-  // Hide on dashboard and registration pages
-  const hideOn = [
-    '/home', '/doctor-dashboard', '/admin',
-    '/register', '/doctor-register',
-    '/booking-confirmed',
-  ];
-  if (hideOn.some(p => pathname.startsWith(p))) return null;
+  // Hide on admin dashboard (has its own sidebar layout)
+  if (pathname.startsWith('/admin')) return null;
 
   return (
     <footer className="global-footer">
@@ -26,6 +21,7 @@ const Footer = () => {
             <li><a href="/#how-it-works">How It Works</a></li>
             <li><Link to="/find-doctors">Find Doctors</Link></li>
             <li><a href="/#about">About Us</a></li>
+            <li><Link to="/partner">Partner with Us</Link></li>
           </ul>
         </div>
         <div className="gf-section">

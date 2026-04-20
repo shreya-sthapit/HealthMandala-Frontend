@@ -1,12 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import './DoctorDashboard.css';
 import { requireApproval } from '../../utils/approvalCheck';
 
 const DoctorDashboard = () => {
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [doctor, setDoctor] = useState({ name: 'Dr. User', specialty: 'Doctor', id: null });
-  const [todayAppointments, setTodayAppointments] = useState([]);
+  const [doctor, setDoctor] = useState({ name: 'Dr. User', specialty: 'Doctor', id: null });  const [todayAppointments, setTodayAppointments] = useState([]);
   const [stats, setStats] = useState({
     todayCount: 0,
     totalPatients: 0,
@@ -18,7 +16,6 @@ const DoctorDashboard = () => {
   const [earnings, setEarnings] = useState({ total: 0, consultations: 0, average: 0 });
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const dropdownRef = useRef(null);
 
   // Get user data from localStorage and fetch dashboard data
   useEffect(() => {
@@ -182,30 +179,6 @@ const DoctorDashboard = () => {
     return `${Math.floor(diffDays / 30)} month${Math.floor(diffDays / 30) > 1 ? 's' : ''} ago`;
   };
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowUserMenu(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  const handleLogout = () => {
-    // Clear user data from localStorage
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('userRole');
-    
-    // Redirect to landing page
-    navigate('/');
-  };
-
   const handleProtectedAction = async (e, action) => {
     e.preventDefault();
     const approved = await requireApproval(doctor.id, 'doctor');
@@ -220,38 +193,6 @@ const DoctorDashboard = () => {
 
   return (
     <div className="doctor-dashboard">
-      <nav className="top-navbar">
-        <Link to="/" className="logo">
-          <img src="/logo.png" alt="HealthMandala" />
-          <span>HealthMandala</span>
-        </Link>
-        <div className="nav-right">
-          <div className="nav-icons">
-            <button className="nav-icon" title="Notifications">N</button>
-            <div className="user-menu-container" ref={dropdownRef}>
-              <button 
-                className="user-menu"
-                onClick={() => setShowUserMenu(!showUserMenu)}
-              >
-                <div className="user-avatar">
-                  {doctor.name.split(' ').slice(-2).map(name => name[0]).join('')}
-                </div>
-              </button>
-              {showUserMenu && (
-                <div className="user-dropdown">
-                  <Link to="/profile" onClick={() => setShowUserMenu(false)}>
-                    Profile
-                  </Link>
-                  <button onClick={handleLogout} className="logout-btn">
-                    Logout
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
-
       <div className="dashboard-content">
         {/* Welcome Banner */}
         <div className="welcome-banner">
