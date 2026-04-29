@@ -59,6 +59,8 @@ const Login = () => {
           navigate('/doctor-dashboard');
         } else if (data.user.role === 'admin') {
           navigate('/admin');
+        } else if (data.user.role === 'hospital_admin') {
+          navigate('/hospital-dashboard');
         } else {
           navigate('/'); // patient → landing page
         }
