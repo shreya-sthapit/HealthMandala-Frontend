@@ -4,6 +4,10 @@
   box-sizing: border-box;
 }
 
+html, body, #root {
+  height: 100%;
+}
+
 :root {
   --primary-color: #00a896;
   --primary-dark: #028090;
@@ -723,7 +727,21 @@ body {
   margin-right: auto;
 }
 
-/* ─── MISC ───────────────────────────────────────── */
+/* ─── APP SHELL (sticky footer) ─────────────────── */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app {
+  flex: 1 0 auto;
+}
+
+.global-footer {
+  flex-shrink: 0;
+}
+
 .loading-state {
   text-align: center;
   padding: 3rem;

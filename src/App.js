@@ -20,7 +20,9 @@ import VerifyOTP from './components/Auth/VerifyOTP';
 import VerifyEmail from './components/Auth/VerifyEmail';
 import NIDRegistration from './components/Auth/NIDRegistration';
 import AccountPending from './components/Auth/AccountPending';
-import AdminDashboard from './components/AdminDashboard/AdminDashboard';
+import HospitalDashboard from './components/HospitalDashboard/HospitalDashboard';
+import SetHospitalPassword from './components/Auth/SetHospitalPassword';
+import HospitalLogin from './components/Auth/HospitalLogin';
 import PersonalInfo from './components/Auth/PatientRegistration/PersonalInfo';
 import AddressInfo from './components/Auth/PatientRegistration/AddressInfo';
 import EmergencyContact from './components/Auth/PatientRegistration/EmergencyContact';
@@ -59,10 +61,11 @@ const DoctorRoute = ({ children }) => {
   return children;
 };
 
-/** Admin-only routes */
-const AdminRoute = ({ children }) => {
-  if (!isLoggedIn() || getRole() !== 'admin') {
-    return <Navigate to="/login" replace />;
+/** Hospital Admin routes */
+const HospitalAdminRoute = ({ children }) => {
+  const role = getRole();
+  if (!isLoggedIn() || (role !== 'hospital_admin' && role !== 'admin')) {
+    return <Navigate to="/hospital/login" replace />;
   }
   return children;
 };
@@ -70,9 +73,10 @@ const AdminRoute = ({ children }) => {
 function App() {
   return (
     <Router>
-      <Navbar />
-      <div className="app">
-        <Routes>
+      <div className="app-shell">
+        <Navbar />
+        <div className="app">
+          <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<AuthPage />} />
           <Route path="/signup" element={<AuthPage />} />
@@ -105,10 +109,13 @@ function App() {
           <Route path="/profile" element={<PatientRoute><Profile /></PatientRoute>} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/partner" element={<PartnerWithUs />} />
-          <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/hospital/set-password" element={<SetHospitalPassword />} />
+          <Route path="/hospital/login" element={<HospitalLogin />} />
+          <Route path="/hospital-dashboard" element={<HospitalAdminRoute><HospitalDashboard /></HospitalAdminRoute>} />
         </Routes>
+        </div>
+        <Footer />
       </div>
-      <Footer />
     </Router>
   );
 }
