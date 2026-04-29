@@ -1,5 +1,5 @@
 .select-doctor-page {
-  min-height: 100vh;
+  min-height: calc(100vh - 70px);
   background: #f8f9fa;
 }
 
