@@ -59,8 +59,28 @@ const Navbar = () => {
   const isActive = (href) => path === href || path.startsWith(href + '/');
 
   // Redirect logged-in patients away from auth pages
-  const isAuthPage = ['/login', '/signup', '/auth'].includes(path);
+  const isAuthPage = ['/login', '/signup', '/auth', '/hospital/set-password'].includes(path);
   if (isAuthPage && user) return null;
+
+  // Hospital dashboard — clean white topbar matching reference design
+  if (path.startsWith('/hospital-dashboard')) {
+    return (
+      <nav className="global-navbar" style={{
+        padding: '0 2rem',
+        height: '56px',
+        background: '#ffffff',
+        borderBottom: '1px solid #e2f0ef',
+        boxShadow: '0 2px 12px rgba(0,168,150,0.06)'
+      }}>
+        <Link to="/" className="global-logo" style={{ fontSize: '1.1rem', gap: '0.5rem' }}>
+          <img src="/logo.png" alt="HealthMandala" style={{ height: '36px' }} />
+          <span style={{ background: 'linear-gradient(135deg, #00c9b1, #0284c7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 800 }}>
+            HealthMandala
+          </span>
+        </Link>
+      </nav>
+    );
+  }
 
   // Avatar: initials from name
   const initials = user
