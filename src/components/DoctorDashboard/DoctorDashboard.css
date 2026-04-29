@@ -1,5 +1,5 @@
 .doctor-dashboard {
-  min-height: 100vh;
+  min-height: calc(100vh - 70px);
   background: var(--light-bg);
   padding-top: 70px; /* offset for fixed global navbar */
 }
