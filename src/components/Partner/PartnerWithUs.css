@@ -1,5 +1,5 @@
 .pw-page {
-  min-height: 100vh;
+  min-height: calc(100vh - 70px);
   background: #f8fafc;
   padding-top: 70px;
 }
@@ -202,8 +202,9 @@
   color: #64748b;
   transition: all 0.18s;
   background: #f8fafc;
-  min-height: 72px;
+  height: 110px;
   justify-content: center;
+  box-sizing: border-box;
 }
 
 .pw-upload:hover { border-color: #00a896; background: #f0fdf9; color: #00a896; }
@@ -371,10 +372,10 @@
 .pw-status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 1rem;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
   border-radius: 20px;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
   margin-bottom: 0.6rem;
 }
@@ -393,18 +394,28 @@
 
 /* Success page enhancements */
 .pw-success {
-  max-width: 560px;
+  max-width: 520px;
   margin: 2.5rem auto 0;
   background: #fff;
-  border-radius: 20px;
+  border-radius: 16px;
   padding: 2.5rem 2.5rem 2rem;
   text-align: center;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
   border: 1px solid #e5e7eb;
 }
 
-.pw-success-icon { font-size: 2.8rem; margin-bottom: 1rem; }
-.pw-success h2 { font-size: 1.4rem; color: #1e293b; margin-bottom: 0.6rem; font-weight: 700; }
+.pw-success-check {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #00a896;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+}
+
+.pw-success h2 { font-size: 1.35rem; color: #1e293b; margin-bottom: 0.6rem; font-weight: 700; }
 .pw-success > p { color: #64748b; font-size: 0.9rem; line-height: 1.65; margin-bottom: 1.25rem; }
 
 /* Under Review pill */
@@ -458,7 +469,7 @@
   line-height: 1.5;
 }
 
-.pw-info-icon { font-size: 1rem; flex-shrink: 0; margin-top: 0.05rem; }
+.pw-info-row svg { flex-shrink: 0; margin-top: 0.1rem; }
 
 .pw-success-hint {
   font-size: 0.8rem !important;
