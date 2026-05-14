@@ -7,6 +7,7 @@ import BookAppointment from './components/Booking/BookAppointment';
 import BookingConfirmed from './components/Booking/BookingConfirmed';
 import MyAppointments from './components/Appointments/MyAppointments';
 import SelectDoctor from './components/Doctors/SelectDoctor';
+import AllSpecialties from './components/Specialties/AllSpecialties';
 import HospitalAppointments from './components/Hospitals/HospitalAppointments';
 import DoctorProfile from './components/Doctors/DoctorProfile';
 import MedicalRecords from './components/MedicalRecords/MedicalRecords';
@@ -22,16 +23,14 @@ import NIDRegistration from './components/Auth/NIDRegistration';
 import AccountPending from './components/Auth/AccountPending';
 import HospitalDashboard from './components/HospitalDashboard/HospitalDashboard';
 import SetHospitalPassword from './components/Auth/SetHospitalPassword';
+import SetDoctorPassword from './components/Auth/SetDoctorPassword';
+import SetStaffPassword from './components/Auth/SetStaffPassword';
 import HospitalLogin from './components/Auth/HospitalLogin';
 import PersonalInfo from './components/Auth/PatientRegistration/PersonalInfo';
 import AddressInfo from './components/Auth/PatientRegistration/AddressInfo';
 import EmergencyContact from './components/Auth/PatientRegistration/EmergencyContact';
 import MedicalInfo from './components/Auth/PatientRegistration/MedicalInfo';
 import NIDVerification from './components/Auth/PatientRegistration/NIDVerification';
-import DoctorPersonalInfo from './components/Auth/DoctorRegistration/PersonalInfo';
-import ProfessionalInfo from './components/Auth/DoctorRegistration/ProfessionalInfo';
-import Documents from './components/Auth/DoctorRegistration/Documents';
-import DoctorNIDVerification from './components/Auth/DoctorRegistration/NIDVerification';
 import Navbar from './components/Navbar/Navbar';
 import DoctorAuth from './components/Auth/DoctorAuth';
 import Footer from './components/Footer/Footer';
@@ -64,7 +63,7 @@ const DoctorRoute = ({ children }) => {
 /** Hospital Admin routes */
 const HospitalAdminRoute = ({ children }) => {
   const role = getRole();
-  if (!isLoggedIn() || (role !== 'hospital_admin' && role !== 'admin')) {
+  if (!isLoggedIn() || (role !== 'hospital_admin' && role !== 'admin' && role !== 'staff')) {
     return <Navigate to="/hospital/login" replace />;
   }
   return children;
@@ -82,7 +81,6 @@ function App() {
           <Route path="/signup" element={<AuthPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/doctor-auth" element={<DoctorAuth />} />
-          <Route path="/verify-otp" element={<VerifyOTP />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/select-role" element={<RoleSelect />} />
           <Route path="/nid-registration" element={<NIDRegistration />} />
@@ -99,6 +97,7 @@ function App() {
           <Route path="/booking-confirmed" element={<PatientRoute><BookingConfirmed /></PatientRoute>} />
           <Route path="/my-appointments" element={<PatientRoute><MyAppointments /></PatientRoute>} />
           <Route path="/find-doctors" element={<SelectDoctor />} />
+          <Route path="/specialties" element={<AllSpecialties />} />
           <Route path="/hospitals" element={<HospitalAppointments />} />
           <Route path="/doctor/:id" element={<DoctorProfile />} />
           <Route path="/medical-records" element={<PatientRoute><MedicalRecords /></PatientRoute>} />
@@ -110,6 +109,8 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/partner" element={<PartnerWithUs />} />
           <Route path="/hospital/set-password" element={<SetHospitalPassword />} />
+          <Route path="/doctor/set-password" element={<SetDoctorPassword />} />
+          <Route path="/staff/set-password" element={<SetStaffPassword />} />
           <Route path="/hospital/login" element={<HospitalLogin />} />
           <Route path="/hospital-dashboard" element={<HospitalAdminRoute><HospitalDashboard /></HospitalAdminRoute>} />
         </Routes>
