@@ -129,6 +129,7 @@
 
 /* ══════════════════════════════════════════
    RIGHT PANEL  –  white, centered card
+   UPDATED: Vertical centering fix
    ══════════════════════════════════════════ */
 .auth-right {
   flex: 1;
@@ -145,14 +146,19 @@
   max-width: 440px;
   background: #fff;
   border-radius: 20px;
-  padding: 2.4rem 2.2rem;
+  padding: 3rem 2.5rem;
   box-shadow: 0 8px 40px rgba(0,168,150,0.10);
   border: 1px solid #e0f5f2;
+}
+
+.auth-content-wrapper {
+  width: 100% !important;
 }
 
 /* ── Header ── */
 .auth-header {
   margin-bottom: 1.2rem;
+  text-align: center;
 }
 .auth-header h2 {
   font-size: 1.75rem;
@@ -197,7 +203,7 @@
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.7rem;
 }
 .form-group {
   display: flex;
@@ -289,7 +295,7 @@
   font-weight: 700;
   cursor: pointer;
   transition: opacity 0.22s, transform 0.15s;
-  margin-top: 0.3rem;
+  margin-top: 1.2rem;
   width: 100%;
   letter-spacing: 0.2px;
   box-shadow: 0 4px 14px rgba(0,168,150,0.28);
@@ -306,7 +312,7 @@
 /* Footer link */
 .auth-footer {
   text-align: center;
-  margin-top: 1rem;
+  margin-top: 1.2rem;
   color: #64748b;
   font-size: 0.82rem;
 }
