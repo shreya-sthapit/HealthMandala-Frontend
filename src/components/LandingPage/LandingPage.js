@@ -10,10 +10,27 @@ const LandingPage = () => {
   const [specialties, setSpecialties] = useState([]);
   const [specialtyCounts, setSpecialtyCounts] = useState({});
   const [loadingDoctors, setLoadingDoctors] = useState(true);
+  const [hospitals, setHospitals] = useState([]);
+  const [loadingHospitals, setLoadingHospitals] = useState(true);
 
   useEffect(() => {
     fetchDoctorsAndSpecialties();
+    fetchHospitals();
   }, []);
+
+  const fetchHospitals = async () => {
+    try {
+      const res = await fetch('http://localhost:5001/api/partner/approved');
+      const data = await res.json();
+      if (data.success && data.hospitals) {
+        setHospitals(data.hospitals.slice(0, 6)); // Show first 6 hospitals
+      }
+    } catch (error) {
+      console.error('Error fetching hospitals:', error);
+    } finally {
+      setLoadingHospitals(false);
+    }
+  };
 
   const fetchDoctorsAndSpecialties = async () => {
     try {
@@ -41,11 +58,12 @@ const LandingPage = () => {
     }
   };
 
-  const mockHospitals = [
-    { id: 1, name: 'B&B Hospital', location: 'Dwarika, Lalitpur', image: '/Hospitals/B&B Hospital.jpg' },
-    { id: 2, name: 'Bir Hospital', location: 'Karti Path, Kathmandu', image: '/Hospitals/Bir Hospital.png' },
-    { id: 3, name: 'B.P. Koirala Lions Center', location: 'Kathmandu', image: '/Hospitals/B. P. Koirala Lions Center.jpg' }
-  ];
+  const getHospitalLocation = (hospital) => {
+    const parts = [];
+    if (hospital.palika) parts.push(hospital.palika);
+    if (hospital.district && hospital.district !== hospital.palika) parts.push(hospital.district);
+    return parts.join(', ') || 'Nepal';
+  };
 
   return (
     <>
@@ -233,30 +251,38 @@ const LandingPage = () => {
       <section className="browse-specialties">
         <div className="specialties-header">
           <div className="specialties-header-left">
-            <h2>Easy Appointment with 15+ area of specialities</h2>
+            <h2>Easy Appointment with 24 area of specialities</h2>
             <p>More than 200 Doctors on HealthMandala providing easy appointment</p>
           </div>
-          <Link to="/signup" className="view-all-btn">View All Specialists →</Link>
+          <Link to="/specialties" className="view-all-btn">View All Specialists →</Link>
         </div>
         <div className="specialties-scroll-wrapper">
           <div className="specialties-track">
             {[
-              { name: 'Cardiology', icon: '🫀', sub: 'Heart & Vascular' },
-              { name: 'Neurology', icon: '🧠', sub: 'Brain & Nerves' },
-              { name: 'Orthopedic', icon: '🦴', sub: 'Bones & Joints' },
-              { name: 'Gynaecology', icon: '🩺', sub: "Women's Health" },
-              { name: 'Dermatology', icon: '🧬', sub: 'Skin & Hair' },
-              { name: 'Paediatrics', icon: '👶', sub: 'Child Health' },
-              { name: 'Gastroenterology', icon: '🫁', sub: 'Digestive System' },
-              { name: 'Endocrinology', icon: '⚗️', sub: 'Hormones & Glands' },
-              { name: 'Ophthalmology', icon: '👁️', sub: 'Eye Care' },
-              { name: 'Urology', icon: '🔬', sub: 'Urinary System' },
-              { name: 'Dentist', icon: '🦷', sub: 'Dental Care' },
-              { name: 'Surgeon', icon: '🏥', sub: 'General Surgery' },
-              // Also include any specialties from DB not in the list above
-              ...specialties
-                .filter(s => !['Cardiology','Neurology','Orthopedic','Gynaecology','Dermatology','Paediatrics','Gastroenterology','Endocrinology','Ophthalmology','Urology','Dentist','Surgeon','Cardiologist'].includes(s))
-                .map(s => ({ name: s, icon: '🏥', sub: 'Specialist' }))
+              { name: 'Ayurveda Physician', sub: 'Traditional Medicine Specialist', icon: '🌿' },
+              { name: 'Cardiologist', sub: 'Heart Specialist', icon: '🫀' },
+              { name: 'Dental Surgeon', sub: 'Teeth & Oral Specialist', icon: '🦷' },
+              { name: 'Dermatologist', sub: 'Skin & Hair Specialist', icon: '🧬' },
+              { name: 'Endocrinologist', sub: 'Diabetes & Hormone Specialist', icon: '⚗️' },
+              { name: 'Gastroenterologist', sub: 'Stomach & Liver Specialist', icon: '🫁' },
+              { name: 'General Physician', sub: 'Internal Medicine & Fever', icon: '🩺' },
+              { name: 'General Practitioner', sub: 'Family Doctor', icon: '👨‍⚕️' },
+              { name: 'General Surgeon', sub: 'General Operations', icon: '🏥' },
+              { name: 'Gynecologist & Obstetrician', sub: 'Women\'s Health & Pregnancy', icon: '🤰' },
+              { name: 'Nephrologist', sub: 'Kidney Specialist', icon: '🔬' },
+              { name: 'Neurologist', sub: 'Brain & Nerve Specialist', icon: '🧠' },
+              { name: 'Neurosurgeon', sub: 'Brain & Spine Surgeon', icon: '🧠' },
+              { name: 'Oncologist', sub: 'Cancer Specialist', icon: '🎗️' },
+              { name: 'Ophthalmologist', sub: 'Eye Specialist', icon: '👁️' },
+              { name: 'Orthopedic Surgeon', sub: 'Bone & Joint Specialist', icon: '🦴' },
+              { name: 'Otolaryngologist', sub: 'ENT - Ear, Nose & Throat Specialist', icon: '👂' },
+              { name: 'Pediatrician', sub: 'Child & Newborn Specialist', icon: '👶' },
+              { name: 'Physiotherapist', sub: 'Physical Rehab Specialist', icon: '🏃' },
+              { name: 'Psychiatrist', sub: 'Mental Health & Counseling Specialist', icon: '🧘' },
+              { name: 'Pulmonologist', sub: 'Chest & Lung Specialist', icon: '🫁' },
+              { name: 'Radiologist', sub: 'X-Ray & Ultrasound Specialist', icon: '📡' },
+              { name: 'Rheumatologist', sub: 'Arthritis & Joint Pain Specialist', icon: '🦴' },
+              { name: 'Urologist', sub: 'Urinary & Kidney Stone Specialist', icon: '🔬' },
             ].map((spec, idx) => (
               <div key={idx} className="specialty-card-new">
                 <div className="specialty-icon-box">
@@ -294,30 +320,63 @@ const LandingPage = () => {
           <p>For easy appointments from any place at top hospitals in Nepal</p>
         </div>
         
-        <div className="hospitals-carousel">
-          {mockHospitals.map((hospital) => (
-            <div key={hospital.id} className="hospital-card-browse">
-              <div className="hospital-image">
-                <img src={hospital.image} alt={hospital.name} />
-              </div>
-              <h3>{hospital.name}</h3>
-              <p className="location">{hospital.location}</p>
-              {isLoggedIn && userRole === 'patient' ? (
-                <Link
-                  to="/book-appointment"
-                  state={{ hospitalFilter: hospital.name }}
-                  className="btn btn-primary btn-small"
-                >Book an Appointment</Link>
-              ) : (
-                <Link to="/auth?role=patient&mode=signup" className="btn btn-primary btn-small">Book an Appointment</Link>
-              )}
+        {loadingHospitals ? (
+          <div className="loading-state">Loading hospitals...</div>
+        ) : hospitals.length > 0 ? (
+          <>
+            <div className="hospitals-carousel">
+              {hospitals.map((hospital) => (
+                <div key={hospital._id} className="hospital-card-browse">
+                  <div className="hospital-image">
+                    {hospital.logoUrl ? (
+                      <img 
+                        src={`http://localhost:5001${hospital.logoUrl}`} 
+                        alt={hospital.hospitalName}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className="hospital-placeholder"
+                      style={{ 
+                        display: hospital.logoUrl ? 'none' : 'flex',
+                        width: '100%',
+                        height: '200px',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '2rem',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      {hospital.hospitalName.charAt(0)}
+                    </div>
+                  </div>
+                  <h3>{hospital.hospitalName}</h3>
+                  <p className="location">{getHospitalLocation(hospital)}</p>
+                  {isLoggedIn && userRole === 'patient' ? (
+                    <Link
+                      to="/book-appointment"
+                      state={{ hospitalFilter: hospital.hospitalName }}
+                      className="btn btn-primary btn-small"
+                    >Book an Appointment</Link>
+                  ) : (
+                    <Link to="/auth?role=patient&mode=signup" className="btn btn-primary btn-small">Book an Appointment</Link>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
 
-        <div className="browse-footer">
-          <Link to="/hospitals" className="view-all-link">View all Hospitals →</Link>
-        </div>
+            <div className="browse-footer">
+              <Link to="/hospitals" className="view-all-link">View all Hospitals →</Link>
+            </div>
+          </>
+        ) : (
+          <div className="loading-state">No hospitals available at the moment</div>
+        )}
       </section>
 
       {/* CTA Section removed */}
@@ -333,7 +392,7 @@ const LandingPage = () => {
             <p>Register as a doctor on HealthMandala and connect with thousands of patients. Manage your schedule, and appointments all in one place.</p>
             <div className="doctor-cta-actions">
               <Link to="/doctor-auth" className="btn btn-primary doctor-signup-btn">
-                Apply Now
+                Doctor Login
               </Link>
             </div>
             <div className="doctor-cta-perks">
