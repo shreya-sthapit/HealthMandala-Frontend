@@ -108,17 +108,18 @@ const Login = () => {
         </div>
 
         {/* Right Panel */}
-        <div className="auth-right">
-          <div className="auth-card">
-            <div className="auth-header">
-              <h2>{roleHint === 'doctor' ? 'Doctor Login' : 'Patient Login'}</h2>
-              <p>{roleHint === 'doctor' ? 'Access your doctor dashboard' : 'Login to manage your appointments'}</p>
-              {roleHint === 'doctor' && (
-                <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '6px' }}>
-                  Not a doctor? <a href="/login?role=patient" style={{ color: 'var(--primary-color)' }}>Patient Login</a>
-                </p>
-              )}
-            </div>
+        <div className="auth-right" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="auth-card" style={{ display: 'flex', alignItems: 'center', minHeight: 'auto', padding: '0 2.5rem' }}>
+            <div className="auth-content-wrapper" style={{ width: '100%', padding: '4rem 0' }}>
+              <div className="auth-header">
+                <h2>{roleHint === 'doctor' ? 'Doctor Login' : 'Patient Login'}</h2>
+                <p>{roleHint === 'doctor' ? 'Access your doctor dashboard' : 'Login to manage your appointments'}</p>
+                {roleHint === 'doctor' && (
+                  <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '6px' }}>
+                    Not a doctor? <a href="/login?role=patient" style={{ color: 'var(--primary-color)' }}>Patient Login</a>
+                  </p>
+                )}
+              </div>
 
         <div className="auth-toggle">
           <button
@@ -198,8 +199,9 @@ const Login = () => {
         </form>
 
         <p className="auth-footer">
-          Don't have an account? <Link to={roleHint === 'doctor' ? '/signup?role=doctor' : '/signup?role=patient'}>Sign Up</Link>
+          Don't have an account? <Link to="/signup">Sign Up</Link>
         </p>
+            </div>
           </div>
         </div>
       </div>
