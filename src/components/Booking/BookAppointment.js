@@ -15,6 +15,9 @@ const BookAppointment = () => {
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [patientStatus] = useState('approved'); // approval gate removed
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [booking, setBooking] = useState({
     specialty: preSelectedDoctor?.specialtyId || specialtyFilter || '',
     doctor: preSelectedDoctor || null,
@@ -24,7 +27,8 @@ const BookAppointment = () => {
     totalTokens: 0,
     workingHours: '',
     reason: '',
-    paymentMethod: 'esewa'
+    paymentMethod: 'esewa',
+    appointmentTime: null
   });
 
   const specialties = [
@@ -78,13 +82,49 @@ const BookAppointment = () => {
     fetchDoctors();
   }, []);
 
+  // Fetch available slots when doctor and date are selected
+  useEffect(() => {
+    const fetchAvailableSlots = async () => {
+      if (!booking.doctor || !booking.date) {
+        setAvailableSlots([]);
+        setSelectedSlot(null);
+        return;
+      }
+
+      setLoadingSlots(true);
+      try {
+        const hospitalName = booking.doctor.hospital || booking.doctor.currentHospital?.[0] || '';
+        const formattedDate = booking.date.full; // Already in YYYY-MM-DD format
+        
+        const response = await fetch(
+          `http://localhost:5001/api/doctor/slots/${booking.doctor._id}?date=${formattedDate}&hospitalName=${encodeURIComponent(hospitalName)}`
+        );
+        const data = await response.json();
+        
+        if (data.success) {
+          setAvailableSlots(data.slots || []);
+        } else {
+          console.error('Failed to fetch slots:', data.error);
+          setAvailableSlots([]);
+        }
+      } catch (error) {
+        console.error('Error fetching slots:', error);
+        setAvailableSlots([]);
+      } finally {
+        setLoadingSlots(false);
+      }
+    };
+
+    fetchAvailableSlots();
+  }, [booking.doctor, booking.date]);
+
   const getFilteredDoctors = () => {
     let filtered = doctors;
 
     // Hospital filter — from hospital booking page
     if (hospitalFilter) {
       filtered = filtered.filter(doc =>
-        doc.hospital && doc.hospital.toLowerCase().includes(hospitalFilter.toLowerCase())
+        doc.hospital && typeof doc.hospital === 'string' && doc.hospital.toLowerCase().includes(hospitalFilter.toLowerCase())
       );
       // In hospital mode, show all filtered doctors (browse mode)
       if (searchTerm) {
@@ -446,6 +486,12 @@ const BookAppointment = () => {
   };
 
   const handleBooking = async () => {
+    // Validate slot selection
+    if (!selectedSlot) {
+      alert('Please select an appointment time slot before proceeding.');
+      return;
+    }
+
     // Validate token selection
     if (!booking.tokenNumber) {
       alert('Please confirm your token number before proceeding.');
@@ -477,18 +523,19 @@ const BookAppointment = () => {
       
       const appointmentData = {
         patientId: userData.id || null,
-        doctorId: booking.doctor.id || null,
+        doctorId: booking.doctor.id || booking.doctor._id || null,
         patientName: userData.firstName && userData.lastName ? `${userData.firstName} ${userData.lastName}` : 'Patient Name',
         patientPhone: userData.phone || '',
         patientEmail: userData.email || '',
-        doctorName: booking.doctor.name,
-        doctorSpecialization: booking.doctor.specialty,
-        hospital: booking.doctor.hospital || '',
+        doctorName: booking.doctor.name || `Dr. ${booking.doctor.firstName} ${booking.doctor.lastName}`,
+        doctorSpecialization: booking.doctor.specialty || booking.doctor.specialization,
+        hospital: booking.doctor.hospital || booking.doctor.currentHospital?.[0] || '',
         appointmentDate: booking.date.full,
+        appointmentTime: selectedSlot, // Include selected slot time
         tokenNumber: booking.tokenNumber,
         appointmentType: 'consultation',
         reasonForVisit: booking.reason || 'General consultation',
-        consultationFee: booking.doctor.fee,
+        consultationFee: booking.doctor.fee || booking.doctor.consultationFee,
         patientNotes: booking.reason || '',
         paymentMethod: booking.paymentMethod,
         paymentStatus: booking.paymentMethod === 'esewa' ? 'paid' : 'pending'
@@ -509,7 +556,7 @@ const BookAppointment = () => {
       if (data.success) {
         navigate('/booking-confirmed', { 
           state: { 
-            booking,
+            booking: { ...booking, appointmentTime: selectedSlot },
             appointmentId: data.appointment.id,
             paymentStatus: appointmentData.paymentStatus
           } 
@@ -539,7 +586,7 @@ const BookAppointment = () => {
 
   const canProceed = () => {
     if (step === 1) return booking.doctor;
-    if (step === 2) return booking.date && booking.tokenNumber;
+    if (step === 2) return booking.date && booking.tokenNumber && selectedSlot;
     return true;
   };
 
@@ -992,6 +1039,93 @@ const BookAppointment = () => {
                   </div>
                 )}
 
+                {/* Slot Selection */}
+                {booking.date && (
+                  <div className="slot-selector-section">
+                    <h2>Select Appointment Time</h2>
+                    {loadingSlots ? (
+                      <div className="slot-loading">
+                        <div className="loading-spinner"></div>
+                        <p>Loading available slots...</p>
+                      </div>
+                    ) : availableSlots.length === 0 ? (
+                      <div className="no-slots">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e0" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10"/>
+                          <line x1="12" y1="8" x2="12" y2="12"/>
+                          <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <p>No available slots for this date</p>
+                        <small>Please select a different date or doctor</small>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="slot-header-info">
+                          <p>{availableSlots.length} slots available • 10 minutes per appointment</p>
+                        </div>
+                        {(() => {
+                          // Group slots by time period
+                          const morningSlots = availableSlots.filter(s => {
+                            const hour = parseInt(s.split(':')[0]);
+                            return hour < 12;
+                          });
+                          
+                          const afternoonSlots = availableSlots.filter(s => {
+                            const hour = parseInt(s.split(':')[0]);
+                            return hour >= 12 && hour < 17;
+                          });
+                          
+                          const eveningSlots = availableSlots.filter(s => {
+                            const hour = parseInt(s.split(':')[0]);
+                            return hour >= 17;
+                          });
+
+                          const formatTime = (time24) => {
+                            const [hours, minutes] = time24.split(':');
+                            const hour = parseInt(hours);
+                            const ampm = hour >= 12 ? 'PM' : 'AM';
+                            const hour12 = hour % 12 || 12;
+                            return `${hour12}:${minutes} ${ampm}`;
+                          };
+
+                          const renderSlotGroup = (title, slots) => {
+                            if (slots.length === 0) return null;
+                            
+                            return (
+                              <div className="slot-group" key={title}>
+                                <h4 className="slot-group-title">{title}</h4>
+                                <div className="slot-grid">
+                                  {slots.map(slot => (
+                                    <button
+                                      key={slot}
+                                      type="button"
+                                      className={`slot-btn ${selectedSlot === slot ? 'selected' : ''}`}
+                                      onClick={() => {
+                                        setSelectedSlot(slot);
+                                        setBooking(prev => ({ ...prev, appointmentTime: slot }));
+                                      }}
+                                    >
+                                      {formatTime(slot)}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          };
+
+                          return (
+                            <div className="slot-groups-container">
+                              {renderSlotGroup('Morning', morningSlots)}
+                              {renderSlotGroup('Afternoon', afternoonSlots)}
+                              {renderSlotGroup('Evening', eveningSlots)}
+                            </div>
+                          );
+                        })()}
+                      </>
+                    )}
+                  </div>
+                )}
+
                 <div className="reason-input">
                   <h2>Reason for Visit (Optional)</h2>
                   <textarea
@@ -1022,6 +1156,18 @@ const BookAppointment = () => {
                   <div className="detail-row">
                     <span className="label">Date</span>
                     <span className="value">{booking.date?.day}, {booking.date?.date} {booking.date?.month}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="label">Appointment Time</span>
+                    <span className="value">
+                      {selectedSlot ? (() => {
+                        const [hours, minutes] = selectedSlot.split(':');
+                        const hour = parseInt(hours);
+                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                        const hour12 = hour % 12 || 12;
+                        return `${hour12}:${minutes} ${ampm}`;
+                      })() : 'Not selected'}
+                    </span>
                   </div>
                   <div className="detail-row">
                     <span className="label">Token Number</span>
