@@ -43,6 +43,7 @@ const BG = '#f9fdfc';
 
 export default function HospitalDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
+  const [doctorSpecFilter, setDoctorSpecFilter] = useState('');
   const [stats, setStats] = useState(null);
   const [hospital, setHospital] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -102,8 +103,8 @@ export default function HospitalDashboard() {
       case 'appointments':
       case 'walkin':
       case 'calendar':     return <HDAppointments {...props} defaultView={activeTab} />;
-      case 'doctors':      return <HDDoctors {...props} />;
-      case 'departments':  return <HDDepartments {...props} />;
+      case 'doctors':      return <HDDoctors {...props} initialSpecFilter={doctorSpecFilter} onSpecFilterUsed={() => setDoctorSpecFilter('')} />;
+      case 'departments':  return <HDDepartments {...props} onDeptClick={spec => { setDoctorSpecFilter(spec); setActiveTab('doctors'); }} />;
       case 'patients':     return <HDPatients {...props} />;
       case 'billing':      return <HDBilling {...props} />;
       case 'profile':      return <HDProfile {...props} />;
