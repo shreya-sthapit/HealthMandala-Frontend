@@ -13,7 +13,7 @@
 .hospital-page-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   margin-bottom: 2rem;
   gap: 1.5rem;
   flex-wrap: wrap;
@@ -23,12 +23,12 @@
   font-size: 1.75rem;
   font-weight: 800;
   color: var(--text-dark);
+  margin: 0;
 }
 
 .hospital-controls {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   gap: 0.75rem;
 }
 
@@ -87,6 +87,91 @@
   color: white;
 }
 
+/* Category Dropdown */
+.category-dropdown {
+  position: relative;
+}
+
+.category-dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 200px;
+  justify-content: space-between;
+}
+
+.category-dropdown-btn:hover {
+  border-color: var(--primary-color);
+  background: #f0fdfa;
+}
+
+.category-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: #4a5568;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  min-width: 320px;
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s;
+  padding: 0.75rem;
+}
+
+.category-dropdown-menu.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.category-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 0.5rem;
+}
+
+.category-option {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  font-weight: 400;
+}
+
+.category-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.category-option.selected {
+  background: var(--primary-color);
+  font-weight: 600;
+}
+
 /* Hospital Grid */
 .hospital-grid {
   display: grid;
@@ -139,19 +224,52 @@
   letter-spacing: 0.5px;
 }
 
-.hospital-type-badge.government {
+.hospital-type-badge.government,
+.hospital-type-badge.government-hospital {
   background: #dbeafe;
   color: #1d4ed8;
 }
 
-.hospital-type-badge.private {
+.hospital-type-badge.private,
+.hospital-type-badge.private-hospital {
   background: #d1fae5;
   color: #065f46;
 }
 
-.hospital-type-badge.specialized {
+.hospital-type-badge.specialized,
+.hospital-type-badge.specialized-clinic {
   background: #ede9fe;
   color: #6d28d9;
+}
+
+.hospital-type-badge.teaching-hospital {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.hospital-type-badge.community-non-profit-hospital {
+  background: #fce7f3;
+  color: #9f1239;
+}
+
+.hospital-type-badge.diagnostic-lab-center {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.hospital-type-badge.polyclinic {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.hospital-type-badge.ayurveda-and-alternative-medicine-center {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.hospital-type-badge.other {
+  background: #f3f4f6;
+  color: #6b7280;
 }
 
 .hospital-arrow-btn {
@@ -243,8 +361,27 @@
 
 @media (max-width: 900px) {
   .hospital-grid { grid-template-columns: repeat(2, 1fr); }
-  .hospital-page-header { flex-direction: column; }
-  .hospital-controls { align-items: flex-start; }
+  .hospital-page-header { 
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .hospital-controls { 
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .hospital-search-box {
+    width: 100%;
+  }
+  .hospital-search-box input {
+    width: 100%;
+  }
+  .category-dropdown {
+    width: 100%;
+  }
+  .category-dropdown-btn {
+    width: 100%;
+  }
 }
 
 @media (max-width: 600px) {
