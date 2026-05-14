@@ -383,7 +383,7 @@ const AuthPage = () => {
             <button type="submit" className="ap-submit" disabled={signupLoading}>
               {signupLoading ? 'Creating...' : 'SIGN UP'}
             </button>
-            <p className="ap-role-link">Are you a Doctor? <Link to="/doctor-auth?mode=signup">Sign up here</Link></p>
+            <p className="ap-role-link">Are you a Doctor? <Link to="/doctor-auth">Sign in here</Link></p>
           </form>
         </div>
 
