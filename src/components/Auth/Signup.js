@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { auth } from '../config/firebase.ts';
-import './Auth.css';
+import './AuthNew.css';
 
 const Signup = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  // 'patient' from navbar, 'doctor' from Apply Now — lock the role
-  const lockedRole = searchParams.get('role') || '';
+  // Only allow patient registration
+  const lockedRole = 'patient';
 
   const [authMethod, setAuthMethod] = useState('email');
   const [showPassword, setShowPassword] = useState(false);
@@ -49,9 +49,9 @@ const Signup = () => {
     e.preventDefault();
     setError('');
 
-    // Validate role selection
-    if (!formData.role) {
-      setError('Please select whether you are a Patient or Doctor');
+    // Block doctor registration
+    if (formData.role === 'doctor') {
+      setError('Doctor self-registration is no longer available. Please contact your hospital administrator.');
       return;
     }
 
@@ -196,15 +196,11 @@ const Signup = () => {
         {/* Right Panel */}
         <div className="auth-right">
           <div className="auth-card">
-            <div className="auth-header">
-              <h2>{lockedRole === 'doctor' ? 'Doctor Sign Up' : 'Patient Sign Up'}</h2>
-              <p>{lockedRole === 'doctor' ? 'Join as a healthcare professional' : 'Join us for better healthcare'}</p>
-              {lockedRole === 'doctor' && (
-                <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '6px' }}>
-                  Not a doctor? <a href="/signup?role=patient" style={{ color: 'var(--primary-color)' }}>Patient Sign Up</a>
-                </p>
-              )}
-            </div>
+            <div className="auth-content-wrapper">
+              <div className="auth-header">
+                <h2>Create Account</h2>
+                <p>Join us for better healthcare</p>
+              </div>
 
         <div className="auth-toggle">
           <button
@@ -222,28 +218,6 @@ const Signup = () => {
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
-          {/* Role Selection — only shown when role is not pre-determined */}
-          {!lockedRole && (
-          <div className="role-selection">
-            <div className="role-options">
-              <div
-                className={`role-option ${formData.role === 'patient' ? 'selected' : ''}`}
-                onClick={() => setFormData({ ...formData, role: 'patient' })}
-              >
-                <div className="role-icon">P</div>
-                <span>Patient</span>
-              </div>
-              <div
-                className={`role-option ${formData.role === 'doctor' ? 'selected' : ''}`}
-                onClick={() => setFormData({ ...formData, role: 'doctor' })}
-              >
-                <div className="role-icon">D</div>
-                <span>Doctor</span>
-              </div>
-            </div>
-          </div>
-          )}
-
           <div className="form-row">
             <div className="form-group">
               <label>First Name</label>
@@ -345,8 +319,11 @@ const Signup = () => {
         </form>
 
         <p className="auth-footer">
-          Already have an account? <Link to={lockedRole === 'doctor' ? '/login?role=doctor' : '/login?role=patient'}>Login</Link>
+          Already have an account? <Link to="/login">Login</Link>
+          <br />
+          Are you a Doctor? <Link to="/doctor-login">Sign in here</Link>
         </p>
+            </div>
           </div>
         </div>
       </div>
