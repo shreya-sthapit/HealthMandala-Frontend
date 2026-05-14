@@ -55,12 +55,11 @@ const DEPT_ICONS = {
   'Ayurveda Physician (Traditional Medicine Specialist)': '🌿',
 };
 
-export default function HDDepartments({ userId, API }) {
+export default function HDDepartments({ userId, API, onDeptClick }) {
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [selectedDept, setSelectedDept] = useState(null);
   const [form, setForm] = useState({ name: '', customName: '' });
   const [saving, setSaving] = useState(false);
 
@@ -113,11 +112,11 @@ export default function HDDepartments({ userId, API }) {
         <div className="hd-card"><div className="hd-empty"><p>No departments set up yet.</p></div></div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1rem' }}>
-          {filtered.map(dept => {
+          {[...filtered].sort((a, b) => a.name.localeCompare(b.name)).map(dept => {
             const icon = DEPT_ICONS[dept.name] || '🏥';
             return (
               <div key={dept._id} style={{ background: '#fff', border: '1.5px solid #e2f0ef', borderRadius: '16px', padding: '1.25rem 1rem', textAlign: 'center', position: 'relative', transition: 'all 0.2s', cursor: 'pointer' }}
-                onClick={() => setSelectedDept(dept)}
+                onClick={() => { if (onDeptClick) { const main = dept.name.split('(')[0].trim(); onDeptClick(main); } }}
                 onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,168,150,0.12)'; e.currentTarget.style.borderColor = '#b2ece6'; }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = '#e2f0ef'; }}
               >
@@ -161,45 +160,6 @@ export default function HDDepartments({ userId, API }) {
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* Department Doctors Modal */}
-      {selectedDept && (
-        <div className="hd-modal-overlay" onClick={() => setSelectedDept(null)}>
-          <div className="hd-modal" style={{ maxWidth: '500px', borderRadius: '20px' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '1.5rem 1.75rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1a2e35', margin: 0 }}>
-                  {selectedDept.name.split('(')[0].trim()}
-                </h3>
-                <p style={{ fontSize: '0.78rem', color: '#a8c5c9', margin: '0.2rem 0 0' }}>
-                  {selectedDept.doctors?.length || 0} doctor{(selectedDept.doctors?.length || 0) !== 1 ? 's' : ''} in this department
-                </p>
-              </div>
-              <button onClick={() => setSelectedDept(null)} style={{ background: '#f0f4f5', border: 'none', borderRadius: '10px', width: 32, height: 32, cursor: 'pointer', fontSize: '1.1rem', color: '#6b8f95', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
-            </div>
-            <div style={{ padding: '1.25rem 1.75rem 1.5rem' }}>
-              {!selectedDept.doctors?.length ? (
-                <div style={{ textAlign: 'center', color: '#a8c5c9', fontSize: '0.88rem', padding: '1.5rem 0' }}>No doctors assigned to this department yet.</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  {selectedDept.doctors.map((doc, idx, arr) => {
-                    const initials = `${doc.firstName?.[0] || ''}${doc.lastName?.[0] || ''}`.toUpperCase() || 'D';
-                    return (
-                      <div key={doc._id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0', borderBottom: idx < arr.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
-                        <div style={{ width: 36, height: 36, borderRadius: '10px', flexShrink: 0, background: 'linear-gradient(135deg, #00c9b1, #0284c7)', color: '#fff', fontWeight: 700, fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{initials}</div>
-                        <div>
-                          <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#1a2e35' }}>Dr. {doc.firstName} {doc.lastName}</div>
-                          <div style={{ fontSize: '0.74rem', color: '#a8c5c9' }}>{doc.specialization}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       )}
 
