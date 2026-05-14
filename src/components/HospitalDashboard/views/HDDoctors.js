@@ -2,14 +2,40 @@ import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react
 
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const SPECS = [
-  'Ayurveda Physician','Cardiologist','Dental Surgeon','Dermatologist',
-  'Endocrinologist','Gastroenterologist','General Physician','General Practitioner',
-  'General Surgeon','Gynecologist & Obstetrician','Nephrologist','Neurologist',
-  'Neurosurgeon','Oncologist','Ophthalmologist','Orthopedic Surgeon',
-  'Otolaryngologist','Pediatrician','Physiotherapist','Psychiatrist',
-  'Pulmonologist','Radiologist','Rheumatologist','Urologist','Other'
+  'Ayurveda Physician (Traditional Medicine Specialist)',
+  'Cardiologist (Heart Specialist)',
+  'Dental Surgeon (Teeth & Oral Specialist)',
+  'Dermatologist (Skin & Hair Specialist)',
+  'Endocrinologist (Diabetes & Hormone Specialist)',
+  'Gastroenterologist (Stomach & Liver Specialist)',
+  'General Physician (Internal Medicine & Fever)',
+  'General Practitioner (Family Doctor)',
+  'General Surgeon (General Operations)',
+  'Gynecologist & Obstetrician (Women\'s Health & Pregnancy)',
+  'Nephrologist (Kidney Specialist)',
+  'Neurologist (Brain & Nerve Specialist)',
+  'Neurosurgeon (Brain & Spine Surgeon)',
+  'Oncologist (Cancer Specialist)',
+  'Ophthalmologist (Eye Specialist)',
+  'Orthopedic Surgeon (Bone & Joint Specialist)',
+  'Otolaryngologist (ENT - Ear, Nose & Throat Specialist)',
+  'Pediatrician (Child & Newborn Specialist)',
+  'Physiotherapist (Physical Rehab Specialist)',
+  'Psychiatrist (Mental Health & Counseling Specialist)',
+  'Pulmonologist (Chest & Lung Specialist)',
+  'Radiologist (X-Ray & Ultrasound Specialist)',
+  'Rheumatologist (Arthritis & Joint Pain Specialist)',
+  'Urologist (Urinary & Kidney Stone Specialist)'
 ];
-const defaultSchedule = DAYS.map(day => ({ day, start: '09:00', end: '17:00', active: day !== 'Saturday' && day !== 'Sunday' }));
+const defaultSchedule = DAYS.map(day => ({ 
+  day, 
+  start: '09:00', 
+  end: '17:00', 
+  active: day !== 'Saturday' && day !== 'Sunday',
+  breakStart: '12:00',
+  breakEnd: '13:00',
+  hasBreak: true
+}));
 
 // Time options in 1-hour increments (12h format)
 // Time options removed (unused)
@@ -139,10 +165,18 @@ function SignaturePad({ value, onChange }) {
   );
 }
 
-export default function HDDoctors({ userId, hospital, API }) {
+export default function HDDoctors({ userId, hospital, API, initialSpecFilter, onSpecFilterUsed }) {
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [specFilter, setSpecFilter] = useState('');
+
+  useEffect(() => {
+    if (initialSpecFilter) {
+      setSpecFilter(initialSpecFilter);
+      if (onSpecFilterUsed) onSpecFilterUsed();
+    }
+  }, [initialSpecFilter]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showModal, setShowModal] = useState(false);
   const [editDoctor, setEditDoctor] = useState(null);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
@@ -152,6 +186,7 @@ export default function HDDoctors({ userId, hospital, API }) {
   const [leaveForm, setLeaveForm] = useState({ startDate: '', endDate: '', reason: '' });
   const [viewDoctor, setViewDoctor] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [showBreakTimes, setShowBreakTimes] = useState(false);
 
   const fetchDoctors = useCallback(async () => {
     if (!userId) return;
@@ -175,7 +210,7 @@ export default function HDDoctors({ userId, hospital, API }) {
 
   useEffect(() => { fetchDoctors(); fetchDepartments(); }, [fetchDoctors, fetchDepartments]);
 
-  const openAdd = () => { setEditDoctor(null); setForm({ firstName: '', lastName: '', phone: '', email: '', nmcNumber: '', specialization: '', consultationFee: '', qualification: '', yearsOfExperience: '', schedule: defaultSchedule, signature: '' }); setShowModal(true); };
+  const openAdd = () => { setEditDoctor(null); setForm({ firstName: '', lastName: '', phone: '', email: '', nmcNumber: '', specialization: '', consultationFee: '', qualification: '', yearsOfExperience: '', schedule: defaultSchedule, signature: '' }); setShowModal(true); setShowBreakTimes(false); };
   const openEdit = async (doc) => {
     setEditDoctor(doc);
     // Fetch fresh doctor data from backend to ensure we have latest fields
@@ -188,6 +223,33 @@ export default function HDDoctors({ userId, hospital, API }) {
       const hs = (d.hospitalSchedules || []).find(
         s => s.hospital?.trim().toLowerCase() === hospitalName.trim().toLowerCase()
       );
+      
+      console.log('Loading doctor for edit:', d.firstName, d.lastName);
+      console.log('Hospital schedule found:', hs);
+      console.log('Schedule data:', hs?.schedule);
+      
+      const loadedSchedule = hs?.schedule?.length ? hs.schedule.map(s => {
+        console.log(`Day ${s.day}: hasBreak=${s.hasBreak}, breakStart=${s.breakStart}, breakEnd=${s.breakEnd}`);
+        return {
+          ...s,
+          // Only set hasBreak if break times actually exist
+          hasBreak: s.hasBreak !== undefined ? s.hasBreak : (s.breakStart && s.breakEnd ? true : false),
+          // Preserve the exact break times that were saved
+          breakStart: s.breakStart || '12:00',
+          breakEnd: s.breakEnd || '13:00'
+        };
+      }) : defaultSchedule;
+      
+      // Check if any day has breaks enabled (only if breakStart and breakEnd exist)
+      const hasAnyBreaks = loadedSchedule.some(s => {
+        const hasBreak = s.active && s.hasBreak === true && s.breakStart && s.breakEnd;
+        console.log(`Day ${s.day}: active=${s.active}, hasBreak=${s.hasBreak}, has times=${!!(s.breakStart && s.breakEnd)}, result=${hasBreak}`);
+        return hasBreak;
+      });
+      
+      console.log('Has any breaks:', hasAnyBreaks);
+      console.log('Final loaded schedule:', loadedSchedule);
+      
       setForm({
         firstName: d.firstName || '',
         lastName: d.lastName || '',
@@ -198,13 +260,27 @@ export default function HDDoctors({ userId, hospital, API }) {
         consultationFee: d.consultationFee || '',
         qualification: d.qualification || '',
         yearsOfExperience: d.experienceYears != null ? String(d.experienceYears) : '',
-        schedule: hs?.schedule?.length ? hs.schedule : defaultSchedule,
+        schedule: loadedSchedule,
         signature: d.signature || '',
       });
-    } catch {
+      setShowBreakTimes(hasAnyBreaks);
+    } catch (err) {
+      console.error('Error loading doctor:', err);
       const hs = (doc.hospitalSchedules || []).find(
         s => s.hospital?.trim().toLowerCase() === (hospital?.hospitalName || '').trim().toLowerCase()
       );
+      const loadedSchedule = hs?.schedule?.length ? hs.schedule.map(s => ({
+        ...s,
+        // Only set hasBreak if break times actually exist
+        hasBreak: s.hasBreak !== undefined ? s.hasBreak : (s.breakStart && s.breakEnd ? true : false),
+        // Preserve the exact break times that were saved
+        breakStart: s.breakStart || '12:00',
+        breakEnd: s.breakEnd || '13:00'
+      })) : defaultSchedule;
+      
+      // Check if any day has breaks enabled (only if breakStart and breakEnd exist)
+      const hasAnyBreaks = loadedSchedule.some(s => s.active && s.hasBreak === true && s.breakStart && s.breakEnd);
+      
       setForm({
         firstName: doc.firstName || '',
         lastName: doc.lastName || '',
@@ -215,9 +291,10 @@ export default function HDDoctors({ userId, hospital, API }) {
         consultationFee: doc.consultationFee || '',
         qualification: doc.qualification || '',
         yearsOfExperience: doc.experienceYears != null ? String(doc.experienceYears) : '',
-        schedule: hs?.schedule?.length ? hs.schedule : defaultSchedule,
+        schedule: loadedSchedule,
         signature: doc.signature || '',
       });
+      setShowBreakTimes(hasAnyBreaks);
     }
     setShowModal(true);
   };
@@ -228,9 +305,13 @@ export default function HDDoctors({ userId, hospital, API }) {
       const url = editDoctor ? `${API}/doctors/${editDoctor._id}` : `${API}/doctors/add`;
       const method = editDoctor ? 'PUT' : 'POST';
       const body = editDoctor
-        ? { consultationFee: parseFloat(form.consultationFee), schedule: form.schedule, hospitalName: hospital?.hospitalName || '', firstName: form.firstName, lastName: form.lastName, phone: form.phone, email: form.email, specialization: form.specialization, qualification: form.qualification, yearsOfExperience: form.yearsOfExperience, signature: form.signature }
+        ? { consultationFee: parseFloat(form.consultationFee), schedule: form.schedule, hospitalName: hospital?.hospitalName || '', firstName: form.firstName, lastName: form.lastName, phone: form.phone, email: form.email, specialization: form.specialization, qualification: form.qualification, yearsOfExperience: form.yearsOfExperience, signature: form.signature, userId }
         : { ...form, userId, consultationFee: parseFloat(form.consultationFee) };
       console.log('Saving doctor body:', body);
+      console.log('Schedule being saved:', body.schedule);
+      body.schedule?.forEach(s => {
+        console.log(`Saving ${s.day}: hasBreak=${s.hasBreak}, breakStart=${s.breakStart}, breakEnd=${s.breakEnd}`);
+      });
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (data.success) {
@@ -242,9 +323,33 @@ export default function HDDoctors({ userId, hospital, API }) {
             body: JSON.stringify({ $addToSet: { doctors: data.doctor._id } })
           });
         }
-        setShowModal(false); fetchDoctors();
-      } else alert(data.error || 'Failed to save');
-    } catch (e) { alert('Error saving doctor'); }
+        setShowModal(false);
+        // Force immediate refresh
+        await fetchDoctors();
+        await fetchDepartments();
+      } else {
+        // Display detailed error message
+        if (data.conflict) {
+          // Schedule conflict error with details
+          alert(
+            `❌ Schedule Conflict\n\n` +
+            `${data.error}\n\n` +
+            `Doctor: ${data.conflict.doctorName}\n` +
+            `Conflicting Hospital: ${data.conflict.conflictingHospital}\n` +
+            `Day: ${data.conflict.day}\n` +
+            `Existing Schedule: ${data.conflict.existingTimeRange}\n` +
+            `Attempted Schedule: ${data.conflict.newTimeRange}\n\n` +
+            `Please adjust the schedule to avoid conflicts.`
+          );
+        } else {
+          // Generic error
+          alert(data.error || 'Failed to save doctor');
+        }
+      }
+    } catch (e) { 
+      console.error('Error saving doctor:', e);
+      alert('Error saving doctor. Please try again.'); 
+    }
     finally { setSaving(false); }
   };
 
@@ -262,9 +367,21 @@ export default function HDDoctors({ userId, hospital, API }) {
   const removeDoctor = async (doc) => {
     if (!window.confirm(`Remove Dr. ${doc.firstName} ${doc.lastName} from this hospital?`)) return;
     try {
-      await fetch(`${API}/doctors/${doc._id}?userId=${userId}`, { method: 'DELETE' });
-      fetchDoctors();
-    } catch (e) { alert('Error removing doctor'); }
+      const res = await fetch(`${API}/doctors/${doc._id}?userId=${userId}`, { method: 'DELETE' });
+      const data = await res.json();
+      
+      if (data.success) {
+        alert(`Dr. ${doc.firstName} ${doc.lastName} has been removed from your hospital.`);
+        // Force immediate refresh
+        await fetchDoctors();
+        await fetchDepartments();
+      } else {
+        alert(data.error || 'Failed to remove doctor');
+      }
+    } catch (e) {
+      console.error('Error removing doctor:', e);
+      alert('Error removing doctor. Please try again.');
+    }
   };
   const updateDayTime = (idx, field, val) => setForm(p => { const s = [...p.schedule]; s[idx] = { ...s[idx], [field]: val }; return { ...p, schedule: s }; });
   const toggleDay = (idx) => setForm(p => { const s = [...p.schedule]; s[idx] = { ...s[idx], active: !s[idx].active }; return { ...p, schedule: s }; });
@@ -275,9 +392,22 @@ export default function HDDoctors({ userId, hospital, API }) {
     <div>
       {/* Toolbar */}
       <div className="hd-card" style={{ padding: '0.75rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-        <div style={{ position: 'relative', flex: 1, maxWidth: '360px' }}>
-          <svg style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#a8c5c9', pointerEvents: 'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input className="hd-search" placeholder="Search by name..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%', margin: 0 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flex: 1 }}>
+          <div style={{ position: 'relative', maxWidth: '280px', flex: 1 }}>
+            <svg style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#a8c5c9', pointerEvents: 'none' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input className="hd-search" placeholder="Search by name..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingLeft: '2.25rem', width: '100%', margin: 0 }} />
+          </div>
+          <select
+            className="hd-select"
+            value={specFilter}
+            onChange={e => setSpecFilter(e.target.value)}
+          >
+            <option value="">All Specializations</option>
+            {[...departments].sort((a, b) => a.name.localeCompare(b.name)).map(d => {
+              const main = d.name.split('(')[0].trim();
+              return <option key={d._id} value={main}>{d.name}</option>;
+            })}
+          </select>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <span style={{ fontSize: '0.8rem', color: '#a8c5c9', fontWeight: 500, background: '#f0f4f5', padding: '0.25rem 0.75rem', borderRadius: '20px', whiteSpace: 'nowrap' }}>
@@ -301,7 +431,11 @@ export default function HDDoctors({ userId, hospital, API }) {
             </thead>
             <tbody>
               {doctors
-                .filter(d => `${d.firstName} ${d.lastName}`.toLowerCase().includes(search.toLowerCase()))
+                .filter(d => {
+                  const nameMatch = `${d.firstName} ${d.lastName}`.toLowerCase().includes(search.toLowerCase());
+                  const specMatch = !specFilter || d.specialization === specFilter;
+                  return nameMatch && specMatch;
+                })
                 .map((doc, idx, arr) => {
                   const onLeave = isOnLeave(doc);
                   const onDuty  = isOnDuty(doc);
@@ -401,7 +535,7 @@ export default function HDDoctors({ userId, hospital, API }) {
                       <option value="">Select specialization</option>
                       {departments.length === 0
                         ? <option disabled>No departments added yet</option>
-                        : departments.map(d => {
+                        : [...departments].sort((a, b) => a.name.localeCompare(b.name)).map(d => {
                             const main = d.name.split('(')[0].trim();
                             return <option key={d._id} value={main}>{d.name}</option>;
                           })
@@ -425,41 +559,197 @@ export default function HDDoctors({ userId, hospital, API }) {
 
                 {/* Schedule */}
                 <div>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#1a2e35', marginBottom: '0.5rem' }}>
-                    Weekly Schedule — {hospital?.hospitalName}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#1a2e35' }}>
+                      Weekly Schedule — {hospital?.hospitalName}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowBreakTimes(!showBreakTimes)}
+                      style={{
+                        fontSize: '0.72rem',
+                        padding: '0.25rem 0.65rem',
+                        borderRadius: '6px',
+                        border: '1.5px solid #e2e8ef',
+                        background: showBreakTimes ? '#00a896' : '#f9f9f9',
+                        color: showBreakTimes ? '#fff' : '#6b8f95',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {showBreakTimes ? '✓ Break Times' : '+ Add Break Times'}
+                    </button>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {form.schedule.map((s, i) => (
-                      <div key={s.day} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.55rem 0', borderBottom: '1px solid #f5f5f5' }}>
-                        {/* Toggle switch */}
-                        <div onClick={() => toggleDay(i)} style={{ position: 'relative', width: 36, height: 20, borderRadius: 20, background: s.active ? '#00a896' : '#d1d5db', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}>
-                          <div style={{ position: 'absolute', top: 2, left: s.active ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
-                        </div>
-                        {/* Day label */}
-                        <span style={{ width: 32, fontSize: '0.82rem', fontWeight: 600, color: s.active ? '#1a2e35' : '#a8c5c9', userSelect: 'none' }}>{s.day.slice(0,3)}</span>
-                        {/* Times */}
-                        {s.active ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1 }}>
-                            <div style={{ display: 'flex', border: '1.5px solid #e2e8ef', borderRadius: '7px', overflow: 'hidden' }}>
-                              <input type="time" value={(() => { const h = parseInt(s.start); const h12 = h % 12 || 12; return `${String(h12).padStart(2,'0')}:00`; })()} onChange={e => { const h12 = parseInt(e.target.value); const ampm = parseInt(s.start) >= 12 ? 'PM' : 'AM'; const h24 = ampm === 'AM' ? (h12 === 12 ? 0 : h12) : (h12 === 12 ? 12 : h12 + 12); updateDayTime(i, 'start', `${String(h24).padStart(2,'0')}:00`); }} style={{ border: 'none', padding: '0.22rem 0.4rem', fontSize: '0.8rem', outline: 'none', color: '#1a2e35', background: '#fff' }} />
-                              <select value={parseInt(s.start) >= 12 ? 'PM' : 'AM'} onChange={e => { const h = parseInt(s.start); const cur = h >= 12 ? 'PM' : 'AM'; if (e.target.value !== cur) { const newH = e.target.value === 'PM' ? (h === 0 ? 12 : h + 12) : (h === 12 ? 0 : h - 12); updateDayTime(i, 'start', `${String(newH).padStart(2,'0')}:00`); } }} style={{ border: 'none', borderLeft: '1px solid #e2e8ef', padding: '0.22rem 0.3rem', fontSize: '0.75rem', outline: 'none', color: '#6b8f95', background: '#f9f9f9', cursor: 'pointer' }}>
-                                <option>AM</option><option>PM</option>
-                              </select>
-                            </div>
-                            <span style={{ fontSize: '0.72rem', color: '#a8c5c9' }}>–</span>
-                            <div style={{ display: 'flex', border: '1.5px solid #e2e8ef', borderRadius: '7px', overflow: 'hidden' }}>
-                              <input type="time" value={(() => { const h = parseInt(s.end); const h12 = h % 12 || 12; return `${String(h12).padStart(2,'0')}:00`; })()} onChange={e => { const h12 = parseInt(e.target.value); const ampm = parseInt(s.end) >= 12 ? 'PM' : 'AM'; const h24 = ampm === 'AM' ? (h12 === 12 ? 0 : h12) : (h12 === 12 ? 12 : h12 + 12); updateDayTime(i, 'end', `${String(h24).padStart(2,'0')}:00`); }} style={{ border: 'none', padding: '0.22rem 0.4rem', fontSize: '0.8rem', outline: 'none', color: '#1a2e35', background: '#fff' }} />
-                              <select value={parseInt(s.end) >= 12 ? 'PM' : 'AM'} onChange={e => { const h = parseInt(s.end); const cur = h >= 12 ? 'PM' : 'AM'; if (e.target.value !== cur) { const newH = e.target.value === 'PM' ? (h === 0 ? 12 : h + 12) : (h === 12 ? 0 : h - 12); updateDayTime(i, 'end', `${String(newH).padStart(2,'0')}:00`); } }} style={{ border: 'none', borderLeft: '1px solid #e2e8ef', padding: '0.22rem 0.3rem', fontSize: '0.75rem', outline: 'none', color: '#6b8f95', background: '#f9f9f9', cursor: 'pointer' }}>
-                                <option>AM</option><option>PM</option>
-                              </select>
-                            </div>
+                      <div key={s.day} style={{ display: 'flex', flexDirection: 'column', padding: '0.55rem 0', borderBottom: '1px solid #f5f5f5' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          {/* Toggle switch */}
+                          <div onClick={() => toggleDay(i)} style={{ position: 'relative', width: 36, height: 20, borderRadius: 20, background: s.active ? '#00a896' : '#d1d5db', cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}>
+                            <div style={{ position: 'absolute', top: 2, left: s.active ? 18 : 2, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                           </div>
-                        ) : (
-                          <span style={{ fontSize: '0.75rem', color: '#a8c5c9' }}>Day off</span>
+                          {/* Day label */}
+                          <span style={{ width: 32, fontSize: '0.82rem', fontWeight: 600, color: s.active ? '#1a2e35' : '#a8c5c9', userSelect: 'none' }}>{s.day.slice(0,3)}</span>
+                          {/* Times */}
+                          {s.active ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1 }}>
+                              <div style={{ display: 'flex', border: '1.5px solid #e2e8ef', borderRadius: '7px', overflow: 'hidden' }}>
+                                <input type="time" value={(() => { const h = parseInt(s.start); const h12 = h % 12 || 12; return `${String(h12).padStart(2,'0')}:00`; })()} onChange={e => { const h12 = parseInt(e.target.value); const ampm = parseInt(s.start) >= 12 ? 'PM' : 'AM'; const h24 = ampm === 'AM' ? (h12 === 12 ? 0 : h12) : (h12 === 12 ? 12 : h12 + 12); updateDayTime(i, 'start', `${String(h24).padStart(2,'0')}:00`); }} style={{ border: 'none', padding: '0.22rem 0.4rem', fontSize: '0.8rem', outline: 'none', color: '#1a2e35', background: '#fff' }} />
+                                <select value={parseInt(s.start) >= 12 ? 'PM' : 'AM'} onChange={e => { const h = parseInt(s.start); const cur = h >= 12 ? 'PM' : 'AM'; if (e.target.value !== cur) { const newH = e.target.value === 'PM' ? (h === 0 ? 12 : h + 12) : (h === 12 ? 0 : h - 12); updateDayTime(i, 'start', `${String(newH).padStart(2,'0')}:00`); } }} style={{ border: 'none', borderLeft: '1px solid #e2e8ef', padding: '0.22rem 0.3rem', fontSize: '0.75rem', outline: 'none', color: '#6b8f95', background: '#f9f9f9', cursor: 'pointer' }}>
+                                  <option>AM</option><option>PM</option>
+                                </select>
+                              </div>
+                              <span style={{ fontSize: '0.72rem', color: '#a8c5c9' }}>–</span>
+                              <div style={{ display: 'flex', border: '1.5px solid #e2e8ef', borderRadius: '7px', overflow: 'hidden' }}>
+                                <input type="time" value={(() => { const h = parseInt(s.end); const h12 = h % 12 || 12; return `${String(h12).padStart(2,'0')}:00`; })()} onChange={e => { const h12 = parseInt(e.target.value); const ampm = parseInt(s.end) >= 12 ? 'PM' : 'AM'; const h24 = ampm === 'AM' ? (h12 === 12 ? 0 : h12) : (h12 === 12 ? 12 : h12 + 12); updateDayTime(i, 'end', `${String(h24).padStart(2,'0')}:00`); }} style={{ border: 'none', padding: '0.22rem 0.4rem', fontSize: '0.8rem', outline: 'none', color: '#1a2e35', background: '#fff' }} />
+                                <select value={parseInt(s.end) >= 12 ? 'PM' : 'AM'} onChange={e => { const h = parseInt(s.end); const cur = h >= 12 ? 'PM' : 'AM'; if (e.target.value !== cur) { const newH = e.target.value === 'PM' ? (h === 0 ? 12 : h + 12) : (h === 12 ? 0 : h - 12); updateDayTime(i, 'end', `${String(newH).padStart(2,'0')}:00`); } }} style={{ border: 'none', borderLeft: '1px solid #e2e8ef', padding: '0.22rem 0.3rem', fontSize: '0.75rem', outline: 'none', color: '#6b8f95', background: '#f9f9f9', cursor: 'pointer' }}>
+                                  <option>AM</option><option>PM</option>
+                                </select>
+                              </div>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '0.75rem', color: '#a8c5c9' }}>Day off</span>
+                          )}
+                        </div>
+                        
+                        {/* Break Time (only show if active and showBreakTimes is true) */}
+                        {s.active && showBreakTimes && (
+                          <div style={{ marginLeft: '68px', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem', paddingLeft: '1rem', borderLeft: '2px solid #f0f4f5' }}>
+                            {/* Break toggle */}
+                            <div 
+                              onClick={() => {
+                                const newSchedule = [...form.schedule];
+                                newSchedule[i].hasBreak = !newSchedule[i].hasBreak;
+                                setForm(p => ({ ...p, schedule: newSchedule }));
+                              }} 
+                              style={{ 
+                                position: 'relative', 
+                                width: 28, 
+                                height: 16, 
+                                borderRadius: 16, 
+                                background: s.hasBreak ? '#ef4444' : '#d1d5db', 
+                                cursor: 'pointer', 
+                                flexShrink: 0, 
+                                transition: 'background 0.2s',
+                                marginRight: '0.25rem'
+                              }}
+                            >
+                              <div style={{ 
+                                position: 'absolute', 
+                                top: 2, 
+                                left: s.hasBreak ? 14 : 2, 
+                                width: 12, 
+                                height: 12, 
+                                borderRadius: '50%', 
+                                background: '#fff', 
+                                transition: 'left 0.2s', 
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)' 
+                              }} />
+                            </div>
+                            <span style={{ fontSize: '0.72rem', color: '#a8c5c9', width: '45px' }}>Break:</span>
+                            {s.hasBreak !== false && (
+                              <>
+                                <div style={{ display: 'flex', border: '1.5px solid #fef2f2', borderRadius: '7px', overflow: 'hidden', background: '#fef2f2' }}>
+                                  <input 
+                                    type="time" 
+                                    value={(() => { 
+                                      const breakTime = s.breakStart || '12:00';
+                                      const h = parseInt(breakTime.split(':')[0]); 
+                                      const m = breakTime.split(':')[1] || '00';
+                                      const h12 = h % 12 || 12; 
+                                      return `${String(h12).padStart(2,'0')}:${m}`; 
+                                    })()} 
+                                    onChange={e => { 
+                                      const [h12Str, m] = e.target.value.split(':');
+                                      const h12 = parseInt(h12Str); 
+                                      const breakTime = s.breakStart || '12:00';
+                                      const currentH = parseInt(breakTime.split(':')[0]);
+                                      const ampm = currentH >= 12 ? 'PM' : 'AM'; 
+                                      const h24 = ampm === 'AM' ? (h12 === 12 ? 0 : h12) : (h12 === 12 ? 12 : h12 + 12); 
+                                      updateDayTime(i, 'breakStart', `${String(h24).padStart(2,'0')}:${m}`); 
+                                    }} 
+                                    step="600"
+                                    style={{ border: 'none', padding: '0.18rem 0.35rem', fontSize: '0.75rem', outline: 'none', color: '#1a2e35', background: '#fff', width: '65px' }} 
+                                  />
+                                  <select 
+                                    value={(() => {
+                                      const breakTime = s.breakStart || '12:00';
+                                      const h = parseInt(breakTime.split(':')[0]);
+                                      return h >= 12 ? 'PM' : 'AM';
+                                    })()} 
+                                    onChange={e => { 
+                                      const breakTime = s.breakStart || '12:00';
+                                      const [hStr, m] = breakTime.split(':');
+                                      const h = parseInt(hStr); 
+                                      const cur = h >= 12 ? 'PM' : 'AM'; 
+                                      if (e.target.value !== cur) { 
+                                        const newH = e.target.value === 'PM' ? (h === 0 ? 12 : h < 12 ? h + 12 : h) : (h === 12 ? 0 : h > 12 ? h - 12 : h); 
+                                        updateDayTime(i, 'breakStart', `${String(newH).padStart(2,'0')}:${m}`); 
+                                      } 
+                                    }} 
+                                    style={{ border: 'none', borderLeft: '1px solid #fecaca', padding: '0.18rem 0.25rem', fontSize: '0.7rem', outline: 'none', color: '#6b8f95', background: '#fff', cursor: 'pointer' }}
+                                  >
+                                    <option>AM</option><option>PM</option>
+                                  </select>
+                                </div>
+                                <span style={{ fontSize: '0.7rem', color: '#a8c5c9' }}>–</span>
+                                <div style={{ display: 'flex', border: '1.5px solid #fef2f2', borderRadius: '7px', overflow: 'hidden', background: '#fef2f2' }}>
+                                  <input 
+                                    type="time" 
+                                    value={(() => { 
+                                      const breakTime = s.breakEnd || '13:00';
+                                      const h = parseInt(breakTime.split(':')[0]); 
+                                      const m = breakTime.split(':')[1] || '00';
+                                      const h12 = h % 12 || 12; 
+                                      return `${String(h12).padStart(2,'0')}:${m}`; 
+                                    })()} 
+                                    onChange={e => { 
+                                      const [h12Str, m] = e.target.value.split(':');
+                                      const h12 = parseInt(h12Str); 
+                                      const breakTime = s.breakEnd || '13:00';
+                                      const currentH = parseInt(breakTime.split(':')[0]);
+                                      const ampm = currentH >= 12 ? 'PM' : 'AM'; 
+                                      const h24 = ampm === 'AM' ? (h12 === 12 ? 0 : h12) : (h12 === 12 ? 12 : h12 + 12); 
+                                      updateDayTime(i, 'breakEnd', `${String(h24).padStart(2,'0')}:${m}`); 
+                                    }} 
+                                    step="600"
+                                    style={{ border: 'none', padding: '0.18rem 0.35rem', fontSize: '0.75rem', outline: 'none', color: '#1a2e35', background: '#fff', width: '65px' }} 
+                                  />
+                                  <select 
+                                    value={(() => {
+                                      const breakTime = s.breakEnd || '13:00';
+                                      const h = parseInt(breakTime.split(':')[0]);
+                                      return h >= 12 ? 'PM' : 'AM';
+                                    })()} 
+                                    onChange={e => { 
+                                      const breakTime = s.breakEnd || '13:00';
+                                      const [hStr, m] = breakTime.split(':');
+                                      const h = parseInt(hStr); 
+                                      const cur = h >= 12 ? 'PM' : 'AM'; 
+                                      if (e.target.value !== cur) { 
+                                        const newH = e.target.value === 'PM' ? (h === 0 ? 12 : h < 12 ? h + 12 : h) : (h === 12 ? 0 : h > 12 ? h - 12 : h); 
+                                        updateDayTime(i, 'breakEnd', `${String(newH).padStart(2,'0')}:${m}`); 
+                                      } 
+                                    }} 
+                                    style={{ border: 'none', borderLeft: '1px solid #fecaca', padding: '0.18rem 0.25rem', fontSize: '0.7rem', outline: 'none', color: '#6b8f95', background: '#fff', cursor: 'pointer' }}
+                                  >
+                                    <option>AM</option><option>PM</option>
+                                  </select>
+                                </div>
+                                <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 500, marginLeft: '0.25rem' }}>🕐 Break</span>
+                              </>
+                            )}
+                          </div>
                         )}
                       </div>
                     ))}
                   </div>
+                  {showBreakTimes && (
+                    <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '6px', fontSize: '0.72rem', color: '#92400e' }}>
+                      💡 Appointments will be generated in 10-minute slots, excluding break times
+                    </div>
+                  )}
                 </div>
 
                 {/* Digital Signature */}
