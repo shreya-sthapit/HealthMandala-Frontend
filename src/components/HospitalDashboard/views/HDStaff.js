@@ -33,14 +33,32 @@ export default function HDStaff({ userId, API }) {
       const method = editStaff ? 'PUT' : 'POST';
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, userId }) });
       const data = await res.json();
-      if (data.success) { setShowModal(false); fetchStaff(); }
+      if (data.success) { 
+        setShowModal(false); 
+        // Force immediate refresh
+        await fetchStaff();
+      }
       else alert(data.error || 'Failed to save');
     } catch (e) { alert('Error saving staff'); } finally { setSaving(false); }
   };
 
   const deleteStaff = async (id) => {
     if (!window.confirm('Remove this staff member?')) return;
-    try { await fetch(`${API}/staff/${id}`, { method: 'DELETE' }); fetchStaff(); } catch (e) { alert('Error deleting'); }
+    try { 
+      const res = await fetch(`${API}/staff/${id}?userId=${userId}`, { method: 'DELETE' });
+      const data = await res.json();
+      
+      if (data.success) {
+        alert(data.message || 'Staff member removed successfully');
+        // Force immediate refresh
+        await fetchStaff();
+      } else {
+        alert(data.error || 'Failed to remove staff');
+      }
+    } catch (e) { 
+      console.error('Error deleting staff:', e);
+      alert('Error deleting staff. Please try again.'); 
+    }
   };
 
   const filtered = staff.filter(s => s.name?.toLowerCase().includes(search.toLowerCase()));
