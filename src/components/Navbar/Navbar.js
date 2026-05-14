@@ -59,7 +59,7 @@ const Navbar = () => {
   const isActive = (href) => path === href || path.startsWith(href + '/');
 
   // Redirect logged-in patients away from auth pages
-  const isAuthPage = ['/login', '/signup', '/auth', '/hospital/set-password'].includes(path);
+  const isAuthPage = ['/login', '/signup', '/auth', '/hospital/set-password', '/doctor/set-password', '/staff/set-password'].includes(path);
   if (isAuthPage && user) return null;
 
   // Hospital dashboard — clean white topbar matching reference design
