@@ -12,6 +12,12 @@ const LandingPage = () => {
   const [loadingDoctors, setLoadingDoctors] = useState(true);
   const [hospitals, setHospitals] = useState([]);
   const [loadingHospitals, setLoadingHospitals] = useState(true);
+  
+  // Quick search states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedHospital, setSelectedHospital] = useState('');
+  const [allDoctors, setAllDoctors] = useState([]);
+  const [filteredDoctors, setFilteredDoctors] = useState([]);
 
   useEffect(() => {
     fetchDoctorsAndSpecialties();
@@ -23,7 +29,7 @@ const LandingPage = () => {
       const res = await fetch('http://localhost:5001/api/partner/approved');
       const data = await res.json();
       if (data.success && data.hospitals) {
-        setHospitals(data.hospitals.slice(0, 6)); // Show first 6 hospitals
+        setHospitals(data.hospitals); // Store all hospitals for dropdown
       }
     } catch (error) {
       console.error('Error fetching hospitals:', error);
@@ -43,7 +49,8 @@ const LandingPage = () => {
       const countsData = await countsRes.json();
 
       if (doctorsData.success && doctorsData.doctors) {
-        setDoctors(doctorsData.doctors.slice(0, 5));
+        setAllDoctors(doctorsData.doctors); // Store all doctors for search
+        setDoctors(doctorsData.doctors.slice(0, 5)); // Show first 5 in carousel
       }
 
       if (countsData.success) {
@@ -56,6 +63,34 @@ const LandingPage = () => {
     } finally {
       setLoadingDoctors(false);
     }
+  };
+  
+  const handleDoctorSearch = () => {
+    if (!searchQuery.trim()) {
+      alert('Please enter a doctor name or specialty');
+      return;
+    }
+    
+    const query = searchQuery.toLowerCase();
+    const results = allDoctors.filter(doc => 
+      doc.name.toLowerCase().includes(query) || 
+      doc.specialty.toLowerCase().includes(query)
+    );
+    
+    if (results.length > 0) {
+      navigate('/book-appointment', { state: { searchQuery: searchQuery } });
+    } else {
+      alert('No doctors found matching your search');
+    }
+  };
+  
+  const handleHospitalSelect = () => {
+    if (!selectedHospital) {
+      alert('Please select a hospital');
+      return;
+    }
+    
+    navigate('/book-appointment', { state: { hospitalFilter: selectedHospital } });
   };
 
   const getHospitalLocation = (hospital) => {
@@ -85,6 +120,78 @@ const LandingPage = () => {
           <div className="hero-image">
             <div className="hero-illustration"> 
               <img src="/Doctor.png" alt="Doctor" className="hero-doctor-img" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Quick Search Section */}
+      <section className="quick-search-section">
+        <div className="quick-search-container">
+          <h2>Find Your Doctor or Hospital</h2>
+          <p>Quick access to book appointments</p>
+          
+          <div className="quick-search-boxes">
+            {/* Doctor Search */}
+            <div className="search-box">
+              <div className="search-box-header">
+                <h3>Search Doctor</h3>
+              </div>
+              <div className="input-with-icon">
+                <svg className="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00a896" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search by doctor name or specialty..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleDoctorSearch()}
+                  className="search-input"
+                />
+              </div>
+              <button onClick={handleDoctorSearch} className="search-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                Search Doctor
+              </button>
+            </div>
+
+            {/* Hospital Dropdown */}
+            <div className="search-box">
+              <div className="search-box-header">
+                <h3>Book at Hospital</h3>
+              </div>
+              <div className="input-with-icon">
+                <svg className="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                <select
+                  value={selectedHospital}
+                  onChange={(e) => setSelectedHospital(e.target.value)}
+                  className="hospital-select"
+                >
+                  <option value="">Select a hospital...</option>
+                  {hospitals.map((hospital) => (
+                    <option key={hospital._id} value={hospital.hospitalName}>
+                      {hospital.hospitalName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button onClick={handleHospitalSelect} className="search-btn hospital-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Book Appointment
+              </button>
             </div>
           </div>
         </div>
@@ -325,7 +432,7 @@ const LandingPage = () => {
         ) : hospitals.length > 0 ? (
           <>
             <div className="hospitals-carousel">
-              {hospitals.map((hospital) => (
+              {hospitals.slice(0, 6).map((hospital) => (
                 <div key={hospital._id} className="hospital-card-browse">
                   <div className="hospital-image">
                     {hospital.logoUrl ? (
