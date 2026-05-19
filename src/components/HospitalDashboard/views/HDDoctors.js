@@ -182,7 +182,7 @@ export default function HDDoctors({ userId, hospital, API, initialSpecFilter, on
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [leaveDoctor, setLeaveDoctor] = useState(null);
   const [departments, setDepartments] = useState([]);
-  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '', nmcNumber: '', specialization: '', consultationFee: '', schedule: defaultSchedule });
+  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', email: '', nmcNumber: '', specialization: '', consultationFee: '', consultationDuration: 10, schedule: defaultSchedule });
   const [leaveForm, setLeaveForm] = useState({ startDate: '', endDate: '', reason: '' });
   const [viewDoctor, setViewDoctor] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -210,7 +210,7 @@ export default function HDDoctors({ userId, hospital, API, initialSpecFilter, on
 
   useEffect(() => { fetchDoctors(); fetchDepartments(); }, [fetchDoctors, fetchDepartments]);
 
-  const openAdd = () => { setEditDoctor(null); setForm({ firstName: '', lastName: '', phone: '', email: '', nmcNumber: '', specialization: '', consultationFee: '', qualification: '', yearsOfExperience: '', schedule: defaultSchedule, signature: '' }); setShowModal(true); setShowBreakTimes(false); };
+  const openAdd = () => { setEditDoctor(null); setForm({ firstName: '', lastName: '', phone: '', email: '', nmcNumber: '', specialization: '', consultationFee: '', consultationDuration: 10, qualification: '', yearsOfExperience: '', schedule: defaultSchedule, signature: '' }); setShowModal(true); setShowBreakTimes(false); };
   const openEdit = async (doc) => {
     setEditDoctor(doc);
     // Fetch fresh doctor data from backend to ensure we have latest fields
@@ -258,6 +258,7 @@ export default function HDDoctors({ userId, hospital, API, initialSpecFilter, on
         nmcNumber: d.nmcNumber || '',
         specialization: d.specialization || '',
         consultationFee: d.consultationFee || '',
+        consultationDuration: d.consultationDuration || 10,
         qualification: d.qualification || '',
         yearsOfExperience: d.experienceYears != null ? String(d.experienceYears) : '',
         schedule: loadedSchedule,
@@ -289,6 +290,7 @@ export default function HDDoctors({ userId, hospital, API, initialSpecFilter, on
         nmcNumber: doc.nmcNumber || '',
         specialization: doc.specialization || '',
         consultationFee: doc.consultationFee || '',
+        consultationDuration: doc.consultationDuration || 10,
         qualification: doc.qualification || '',
         yearsOfExperience: doc.experienceYears != null ? String(doc.experienceYears) : '',
         schedule: loadedSchedule,
@@ -305,9 +307,12 @@ export default function HDDoctors({ userId, hospital, API, initialSpecFilter, on
       const url = editDoctor ? `${API}/doctors/${editDoctor._id}` : `${API}/doctors/add`;
       const method = editDoctor ? 'PUT' : 'POST';
       const body = editDoctor
-        ? { consultationFee: parseFloat(form.consultationFee), schedule: form.schedule, hospitalName: hospital?.hospitalName || '', firstName: form.firstName, lastName: form.lastName, phone: form.phone, email: form.email, specialization: form.specialization, qualification: form.qualification, yearsOfExperience: form.yearsOfExperience, signature: form.signature, userId }
-        : { ...form, userId, consultationFee: parseFloat(form.consultationFee) };
+        ? { consultationFee: parseFloat(form.consultationFee), consultationDuration: parseInt(form.consultationDuration) || 10, schedule: form.schedule, hospitalName: hospital?.hospitalName || '', firstName: form.firstName, lastName: form.lastName, phone: form.phone, email: form.email, specialization: form.specialization, qualification: form.qualification, yearsOfExperience: form.yearsOfExperience, signature: form.signature, userId }
+        : { ...form, userId, consultationFee: parseFloat(form.consultationFee), consultationDuration: parseInt(form.consultationDuration) || 10 };
       console.log('Saving doctor body:', body);
+      console.log('Form consultationDuration:', form.consultationDuration);
+      console.log('Parsed consultationDuration:', parseInt(form.consultationDuration));
+      console.log('Body consultationDuration:', body.consultationDuration);
       console.log('Schedule being saved:', body.schedule);
       body.schedule?.forEach(s => {
         console.log(`Saving ${s.day}: hasBreak=${s.hasBreak}, breakStart=${s.breakStart}, breakEnd=${s.breakEnd}`);
@@ -670,7 +675,7 @@ export default function HDDoctors({ userId, hospital, API, initialSpecFilter, on
                                       updateDayTime(i, 'breakStart', `${String(h24).padStart(2,'0')}:${m}`); 
                                     }} 
                                     step="600"
-                                    style={{ border: 'none', padding: '0.18rem 0.35rem', fontSize: '0.75rem', outline: 'none', color: '#1a2e35', background: '#fff', width: '65px' }} 
+                                    style={{ border: 'none', padding: '0.18rem 0.35rem', fontSize: '0.75rem', outline: 'none', color: '#1a2e35', background: '#fff', width: '80px' }} 
                                   />
                                   <select 
                                     value={(() => {
@@ -714,7 +719,7 @@ export default function HDDoctors({ userId, hospital, API, initialSpecFilter, on
                                       updateDayTime(i, 'breakEnd', `${String(h24).padStart(2,'0')}:${m}`); 
                                     }} 
                                     step="600"
-                                    style={{ border: 'none', padding: '0.18rem 0.35rem', fontSize: '0.75rem', outline: 'none', color: '#1a2e35', background: '#fff', width: '65px' }} 
+                                    style={{ border: 'none', padding: '0.18rem 0.35rem', fontSize: '0.75rem', outline: 'none', color: '#1a2e35', background: '#fff', width: '80px' }} 
                                   />
                                   <select 
                                     value={(() => {
@@ -745,11 +750,35 @@ export default function HDDoctors({ userId, hospital, API, initialSpecFilter, on
                       </div>
                     ))}
                   </div>
-                  {showBreakTimes && (
-                    <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.75rem', background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '6px', fontSize: '0.72rem', color: '#92400e' }}>
-                      💡 Appointments will be generated in 10-minute slots, excluding break times
+                  
+                  {/* Appointment Duration - Always visible */}
+                  <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1a2e35', marginBottom: '0.5rem', display: 'block' }}>
+                      Appointment Duration (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      max="120"
+                      step="1"
+                      value={form.consultationDuration || 10}
+                      onChange={e => setForm({ ...form, consultationDuration: parseInt(e.target.value) || 10 })}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem',
+                        border: '1.5px solid #e0f2fe',
+                        borderRadius: '6px',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        transition: 'border-color 0.2s'
+                      }}
+                      onFocus={e => e.target.style.borderColor = '#0ea5e9'}
+                      onBlur={e => e.target.style.borderColor = '#e0f2fe'}
+                    />
+                    <div style={{ marginTop: '0.4rem', fontSize: '0.7rem', color: '#64748b' }}>
+                      💡 Appointments will be generated in {form.consultationDuration || 10}-minute slots{showBreakTimes ? ', excluding break times' : ''}
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* Digital Signature */}
@@ -800,6 +829,7 @@ export default function HDDoctors({ userId, hospital, API, initialSpecFilter, on
                 ['Qualification', viewDoctor.qualification],
                 ['Experience', viewDoctor.experienceYears ? `${viewDoctor.experienceYears} years` : '—'],
                 ['Consultation Fee', viewDoctor.consultationFee ? `NPR ${viewDoctor.consultationFee}` : '—'],
+                ['Appointment Duration', viewDoctor.consultationDuration ? `${viewDoctor.consultationDuration} minutes` : '10 minutes'],
               ].map(([label, val]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', borderBottom: '1px solid #f5f5f5', paddingBottom: '0.5rem' }}>
                   <span style={{ color: '#a8c5c9', fontWeight: 500 }}>{label}</span>
@@ -813,15 +843,28 @@ export default function HDDoctors({ userId, hospital, API, initialSpecFilter, on
                 );
                 const schedule = hs?.schedule?.filter(s => s.active) || [];
                 if (!schedule.length) return null;
-                const fmt = (t) => { const h = parseInt(t); const h12 = h % 12 || 12; return `${String(h12).padStart(2,'0')}:00 ${h >= 12 ? 'PM' : 'AM'}`; };
+                const fmt = (t) => { 
+                  const [h, m] = t.split(':');
+                  const hour = parseInt(h);
+                  const min = m || '00';
+                  const h12 = hour % 12 || 12; 
+                  return `${String(h12).padStart(2,'0')}:${min} ${hour >= 12 ? 'PM' : 'AM'}`; 
+                };
                 return (
                   <div>
                     <div style={{ fontSize: '0.78rem', color: '#a8c5c9', fontWeight: 500, marginBottom: '0.4rem' }}>Weekly Schedule</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                       {schedule.map((s, i) => (
-                        <div key={s.day} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', padding: '0.4rem 0', borderBottom: i < schedule.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
-                          <span style={{ color: '#1a2e35', fontWeight: 600, width: 40 }}>{s.day.slice(0,3)}</span>
-                          <span style={{ color: '#6b8f95' }}>{fmt(s.start)} – {fmt(s.end)}</span>
+                        <div key={s.day} style={{ display: 'flex', flexDirection: 'column', fontSize: '0.82rem', padding: '0.4rem 0', borderBottom: i < schedule.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#a8c5c9', fontWeight: 600, width: 40 }}>{s.day.slice(0,3)}</span>
+                            <span style={{ color: '#1a2e35' }}>{fmt(s.start)} – {fmt(s.end)}</span>
+                          </div>
+                          {s.hasBreak && s.breakStart && s.breakEnd && (
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.2rem' }}>
+                              <span style={{ color: '#a8c5c9', fontSize: '0.75rem' }}>Break: {fmt(s.breakStart)} – {fmt(s.breakEnd)}</span>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
