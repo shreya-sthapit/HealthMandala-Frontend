@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import DoctorProfileModal from './DoctorProfileModal';
 import './SelectDoctor.css';
 
 const SelectDoctor = () => {
@@ -9,6 +10,8 @@ const SelectDoctor = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All Specializations');
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [showModal, setShowModal] = useState(false);
   
   // Complete list of specializations
   const specialties = [
@@ -196,28 +199,82 @@ const SelectDoctor = () => {
   };
 
   const handleBookSlot = (doc, date, time) => {
-    requireAuth(() => {
-      const photoPath = doc.profilePhoto
-        ? doc.profilePhoto.replace(/\\/g, '/').replace(/^backend\//, '')
-        : null;
-      navigate('/book-appointment', {
-        state: {
-          preSelectedDoctor: {
-            id: doc.id, name: doc.name, specialty: doc.specialty,
-            specialtyId: doc.specialtyId, rating: doc.rating,
-            patients: doc.patients, experience: doc.experience,
-            fee: doc.fee, hospital: doc.hospital, profilePhoto: photoPath,
-            schedule: doc.schedule, lunchBreak: doc.lunchBreak,
-            leaves: doc.leaves, availableDays: doc.availableDays,
-            availableTimeStart: doc.availableTimeStart,
-            availableTimeEnd: doc.availableTimeEnd,
-            consultationDuration: doc.consultationDuration,
-          },
-          preSelectedDate: date.toISOString().split('T')[0],
-          preSelectedTime: time,
-        }
-      });
+    console.log('=== HANDLE BOOK SLOT CALLED ===');
+    console.log('Doctor:', doc.name);
+    console.log('Date:', date);
+    console.log('Time:', time);
+    console.log('Time format check:', {
+      value: time,
+      type: typeof time,
+      length: time.length,
+      includes_colon: time.includes(':')
     });
+    
+    // Check authentication first
+    const token = localStorage.getItem('token');
+    console.log('Token check:', token ? 'Token exists' : 'NO TOKEN - User not authenticated');
+    
+    if (!token) {
+      console.log('🚫 REDIRECTING TO LOGIN - User not authenticated');
+      // Save booking intent to restore after login
+      const bookingIntent = {
+        doctorId: doc.id,
+        doctorName: doc.name,
+        date: date.toISOString().split('T')[0],
+        time: time
+      };
+      sessionStorage.setItem('bookingIntent', JSON.stringify(bookingIntent));
+      console.log('Saved booking intent:', bookingIntent);
+      console.log('Navigating to /login...');
+      navigate('/login?redirect=/find-doctors');
+      return;
+    }
+    
+    console.log('✅ User authenticated, proceeding with booking');
+    // User is authenticated, proceed with booking
+    const photoPath = doc.profilePhoto
+      ? doc.profilePhoto.replace(/\\/g, '/').replace(/^backend\//, '')
+      : null;
+    navigate('/book-appointment', {
+      state: {
+        preSelectedDoctor: {
+          id: doc.id, 
+          _id: doc.id, // Add _id for consistency
+          name: doc.name, 
+          specialty: doc.specialty,
+          specialtyId: doc.specialtyId, 
+          rating: doc.rating,
+          patients: doc.patients, 
+          experience: doc.experience,
+          fee: doc.fee, 
+          hospital: doc.hospital, 
+          currentHospital: doc.currentHospital || doc.hospital,
+          profilePhoto: photoPath,
+          schedule: doc.schedule, 
+          hospitalSchedules: doc.hospitalSchedules, // Add hospitalSchedules
+          lunchBreak: doc.lunchBreak,
+          leaves: doc.leaves, 
+          availableDays: doc.availableDays,
+          availableTimeStart: doc.availableTimeStart,
+          availableTimeEnd: doc.availableTimeEnd,
+          consultationDuration: doc.consultationDuration,
+          nmcNumber: doc.nmcNumber,
+          qualification: doc.qualification,
+        },
+        preSelectedDate: date.toISOString().split('T')[0],
+        preSelectedTime: time,
+      }
+    });
+  };
+
+  const handleViewProfile = (doc, nextAvailable) => {
+    setSelectedDoctor({ ...doc, nextAvailable });
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedDoctor(null);
   };
 
   return (
@@ -333,9 +390,12 @@ const SelectDoctor = () => {
                         <span className="dot green"></span>
                         Next Available: {nextAvailable || 'Contact clinic directly'}
                       </p>
-                      <Link to={isLoggedIn() ? `/doctor/${doc.id}` : '/signup'} className="view-profile-btn">
+                      <button 
+                        className="view-profile-btn"
+                        onClick={() => handleViewProfile(doc, nextAvailable)}
+                      >
                         View Profile ›
-                      </Link>
+                      </button>
                     </div>
                   </div>
 
@@ -410,22 +470,38 @@ const SelectDoctor = () => {
                         })}
                         <button
                           className="check-schedule-btn"
-                          onClick={() => requireAuth(() => navigate('/book-appointment', {
-                            state: {
-                              preSelectedDoctor: {
-                                id: doc.id, name: doc.name, specialty: doc.specialty,
-                                specialtyId: doc.specialtyId, rating: doc.rating,
-                                patients: doc.patients, experience: doc.experience,
-                                fee: doc.fee, hospital: doc.hospital,
-                                profilePhoto: doc.profilePhoto?.replace(/\\/g, '/').replace(/^backend\//, ''),
-                                schedule: doc.schedule, lunchBreak: doc.lunchBreak,
-                                leaves: doc.leaves, availableDays: doc.availableDays,
-                                availableTimeStart: doc.availableTimeStart,
-                                availableTimeEnd: doc.availableTimeEnd,
-                                consultationDuration: doc.consultationDuration,
+                          onClick={() => {
+                            // Allow everyone to view schedules (no auth check)
+                            const photoPath = doc.profilePhoto?.replace(/\\/g, '/').replace(/^backend\//, '');
+                            navigate('/book-appointment', {
+                              state: {
+                                preSelectedDoctor: {
+                                  id: doc.id, 
+                                  _id: doc.id, // Add _id for consistency
+                                  name: doc.name, 
+                                  specialty: doc.specialty,
+                                  specialtyId: doc.specialtyId, 
+                                  rating: doc.rating,
+                                  patients: doc.patients, 
+                                  experience: doc.experience,
+                                  fee: doc.fee, 
+                                  hospital: doc.hospital,
+                                  currentHospital: doc.currentHospital || doc.hospital,
+                                  profilePhoto: photoPath,
+                                  schedule: doc.schedule, 
+                                  hospitalSchedules: doc.hospitalSchedules, // Add hospitalSchedules
+                                  lunchBreak: doc.lunchBreak,
+                                  leaves: doc.leaves, 
+                                  availableDays: doc.availableDays,
+                                  availableTimeStart: doc.availableTimeStart,
+                                  availableTimeEnd: doc.availableTimeEnd,
+                                  consultationDuration: doc.consultationDuration,
+                                  nmcNumber: doc.nmcNumber,
+                                  qualification: doc.qualification,
+                                }
                               }
-                            }
-                          }))}
+                            });
+                          }}
                         >
                           Check Other Schedule Time to take appointment →
                         </button>
@@ -438,6 +514,15 @@ const SelectDoctor = () => {
           </div>
         )}
       </div>
+
+      {/* Doctor Profile Modal */}
+      {showModal && selectedDoctor && (
+        <DoctorProfileModal 
+          doctor={selectedDoctor} 
+          onClose={closeModal}
+          nextAvailable={selectedDoctor.nextAvailable}
+        />
+      )}
     </div>
   );
 };
