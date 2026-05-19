@@ -93,7 +93,7 @@ function App() {
           <Route path="/register/nid" element={<NIDVerification />} />
           {/* Doctor Registration Steps — removed, fields now in DoctorAuth signup */}
           <Route path="/home" element={<Navigate to="/" replace />} />
-          <Route path="/book-appointment" element={<PatientRoute><BookAppointment /></PatientRoute>} />
+          <Route path="/book-appointment" element={<BookAppointment />} />
           <Route path="/booking-confirmed" element={<PatientRoute><BookingConfirmed /></PatientRoute>} />
           <Route path="/my-appointments" element={<PatientRoute><MyAppointments /></PatientRoute>} />
           <Route path="/find-doctors" element={<SelectDoctor />} />
