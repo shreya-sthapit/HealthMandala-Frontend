@@ -3,11 +3,11 @@ import '../AuthPage.css';
 import './PatientRegLayout.css';
 
 const STEPS = [
-  { num: 1, label: 'Personal' },
-  { num: 2, label: 'Address' },
-  { num: 3, label: 'Emergency' },
-  { num: 4, label: 'Medical' },
-  { num: 5, label: 'NID' },
+  { num: 1, label: 'Personal Details' },
+  { num: 2, label: 'Address Information' },
+  { num: 3, label: 'Emergency Contact' },
+  { num: 4, label: 'Medical Information' },
+  { num: 5, label: 'NID Verification' },
 ];
 
 const LEFT_CONTENT = {
@@ -27,48 +27,60 @@ const PatientRegLayout = ({ step, title, subtitle, children }) => {
 
         {/* ── Teal left panel ── */}
         <div className="prl-left">
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', marginBottom: '2rem' }}>
-            <img src="/logo.png" alt="HealthMandala" style={{ height: 30, width: 'auto' }} />
-            <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff' }}>HealthMandala</span>
-          </Link>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#fff', marginBottom: '3rem', textAlign: 'center' }}>
+            Create Account
+          </h1>
 
-          <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>{left.emoji}</div>
-          <h2 style={{ fontSize: '1.65rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem', whiteSpace: 'pre-line', lineHeight: 1.2 }}>
-            {left.title}
-          </h2>
-          <p style={{ fontSize: '0.86rem', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, maxWidth: 200, marginBottom: '2rem' }}>
-            {left.desc}
-          </p>
-
-          {/* Step dots */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+          {/* Vertical Stepper */}
+          <div style={{ width: '100%', maxWidth: '280px' }}>
             {STEPS.map((s, i) => (
-              <div key={s.num} style={{ display: 'flex', alignItems: 'center' }}>
-                <div style={{
-                  width: 30, height: 30, borderRadius: '50%',
-                  background: s.num < step ? '#10b981' : s.num === step ? '#fff' : 'rgba(255,255,255,0.25)',
-                  color: s.num === step ? '#6dbc95' : '#fff',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 700, fontSize: '0.78rem',
-                  border: s.num === step ? '2px solid #fff' : 'none',
-                  transition: 'all 0.3s',
-                }}>
-                  {s.num < step ? '✓' : s.num}
+              <div key={s.num} style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  {/* Circle */}
+                  <div style={{
+                    width: 50,
+                    height: 50,
+                    minWidth: 50,
+                    borderRadius: '50%',
+                    background: s.num < step ? '#fff' : s.num === step ? '#fff' : 'rgba(255,255,255,0.3)',
+                    color: s.num === step ? '#6dbc95' : s.num < step ? '#10b981' : 'rgba(255,255,255,0.6)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: '1.1rem',
+                    transition: 'all 0.3s',
+                  }}>
+                    {s.num < step ? '✓' : s.num}
+                  </div>
+                  {/* Label */}
+                  <div style={{
+                    fontSize: '1.05rem',
+                    fontWeight: s.num === step ? 700 : 500,
+                    color: s.num === step ? '#fff' : s.num < step ? '#fff' : 'rgba(255,255,255,0.6)',
+                    transition: 'all 0.3s',
+                  }}>
+                    {s.label}
+                  </div>
                 </div>
+                {/* Vertical Line */}
                 {i < STEPS.length - 1 && (
-                  <div style={{ width: 22, height: 3, background: s.num < step ? '#10b981' : 'rgba(255,255,255,0.25)', transition: 'background 0.3s' }} />
+                  <div style={{
+                    width: 3,
+                    height: 50,
+                    background: s.num < step ? '#fff' : 'rgba(255,255,255,0.25)',
+                    marginLeft: '23.5px',
+                    transition: 'background 0.3s',
+                  }} />
                 )}
               </div>
             ))}
           </div>
-          <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.6)', marginTop: '0.5rem' }}>
-            Step {step} of {STEPS.length}
-          </p>
         </div>
 
         {/* ── White right panel ── */}
-        <div className="prl-right">
-          <div className="prl-form-wrapper">
+        <div className="prl-right" style={{ paddingTop: '120px', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+          <div className="prl-form-wrapper" style={{ marginTop: '0' }}>
             <h2 className="prl-title">{title}</h2>
             {subtitle && <p className="prl-subtitle">{subtitle}</p>}
             {children}

@@ -34,25 +34,6 @@
   overflow: hidden;
 }
 
-.prl-left::before {
-  content: '';
-  position: absolute;
-  width: 300px; height: 300px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.07);
-  top: -80px; right: -80px;
-  pointer-events: none;
-}
-.prl-left::after {
-  content: '';
-  position: absolute;
-  width: 180px; height: 180px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.05);
-  bottom: -50px; left: -50px;
-  pointer-events: none;
-}
-
 /* ── Right white panel ── */
 .prl-right {
   flex: 1;
@@ -61,28 +42,29 @@
   align-items: flex-start;
   justify-content: center;
   padding: 2rem 4%;
+  padding-top: 120px !important;
   overflow-y: auto;
   border-radius: 0 20px 20px 0;
 }
 
 .prl-form-wrapper {
   width: 100%;
-  max-width: 480px;
+  max-width: 520px;
   padding: 0.5rem 0;
 }
 
 .prl-title {
-  font-size: 1.65rem;
-  font-weight: 800;
+  font-size: 1.8rem;
+  font-weight: 700;
   color: #1e293b;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
   text-align: center;
 }
 
 .prl-subtitle {
-  font-size: 0.84rem;
+  font-size: 0.9rem;
   color: #64748b;
-  margin-bottom: 1.25rem;
+  margin-bottom: 2rem;
   text-align: center;
 }
 
@@ -90,12 +72,12 @@
 .prl-form-wrapper .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.18rem;
-  margin-bottom: 0.75rem;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
 }
 
 .prl-form-wrapper .form-group label {
-  font-size: 0.76rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #1e293b;
 }
@@ -104,10 +86,10 @@
 .prl-form-wrapper .form-group select,
 .prl-form-wrapper .form-group textarea {
   width: 100%;
-  padding: 0.7rem 1rem;
+  padding: 0.85rem 1.1rem;
   border: 1.5px solid #e2e8f0;
   border-radius: 10px;
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   background: #fff;
   color: #1e293b;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -149,23 +131,24 @@
 /* Buttons */
 .prl-form-wrapper .btn-group {
   display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2rem;
 }
 
 .prl-form-wrapper .reg-btn {
-  flex: 1;
-  padding: 0.78rem;
+  padding: 0.9rem 2.5rem;
   background: #6dbc95;
   color: #fff;
   border: none;
   border-radius: 25px;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.25s, transform 0.15s;
   box-shadow: 0 4px 14px rgba(109,188,149,0.35);
   letter-spacing: 0.05em;
+  min-width: 140px;
 }
 .prl-form-wrapper .reg-btn:hover { background: #5aaa82; transform: translateY(-1px); }
 .prl-form-wrapper .reg-btn:active { transform: translateY(0); }
@@ -207,18 +190,20 @@
 .prl-form-wrapper .upload-area {
   border: 1.5px dashed #d1d5db;
   border-radius: 10px;
-  padding: 1rem;
+  padding: 1.5rem;
   cursor: pointer;
   transition: all 0.2s;
   background: #f8fffe;
   display: block;
+  margin-bottom: 1rem;
 }
 .prl-form-wrapper .upload-area:hover { border-color: #6dbc95; background: #f0fdfa; }
 
 .prl-form-wrapper .upload-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
 }
 
 .prl-form-wrapper .image-preview {
@@ -239,18 +224,26 @@
 
 /* Profile photo */
 .prl-form-wrapper .profile-upload-area {
-  width: 88px; height: 88px;
+  width: 100px; 
+  height: 100px;
   border: 1.5px dashed #d1d5db;
   border-radius: 50%;
   cursor: pointer;
   background: #f8fffe;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
   transition: all 0.2s;
+  margin: 1rem auto;
 }
 .prl-form-wrapper .profile-upload-area:hover { border-color: #6dbc95; background: #f0fdfa; }
 .prl-form-wrapper .profile-preview {
-  position: relative; width: 88px; height: 88px;
-  border-radius: 50%; overflow: hidden;
+  position: relative; 
+  width: 100px; 
+  height: 100px;
+  border-radius: 50%; 
+  overflow: hidden;
+  margin: 1rem auto;
 }
 .prl-form-wrapper .profile-preview img { width: 100%; height: 100%; object-fit: cover; }
 .prl-form-wrapper .profile-preview .remove-btn { top: 2px; right: 2px; }
