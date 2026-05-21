@@ -5,6 +5,7 @@ import RoleSelect from './components/Auth/RoleSelect';
 import Home from './components/Home/Home';
 import BookAppointment from './components/Booking/BookAppointment';
 import BookingConfirmed from './components/Booking/BookingConfirmed';
+import KhaltiReturn from './components/Booking/KhaltiReturn';
 import MyAppointments from './components/Appointments/MyAppointments';
 import SelectDoctor from './components/Doctors/SelectDoctor';
 import AllSpecialties from './components/Specialties/AllSpecialties';
@@ -95,6 +96,7 @@ function App() {
           <Route path="/home" element={<Navigate to="/" replace />} />
           <Route path="/book-appointment" element={<BookAppointment />} />
           <Route path="/booking-confirmed" element={<PatientRoute><BookingConfirmed /></PatientRoute>} />
+          <Route path="/khalti-return" element={<KhaltiReturn />} />
           <Route path="/my-appointments" element={<PatientRoute><MyAppointments /></PatientRoute>} />
           <Route path="/find-doctors" element={<SelectDoctor />} />
           <Route path="/specialties" element={<AllSpecialties />} />
