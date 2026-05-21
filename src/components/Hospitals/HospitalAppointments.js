@@ -174,7 +174,13 @@ const HospitalAppointments = () => {
             
             return (
               <div key={hospital._id} className="hospital-card">
-                <div className="hospital-card-image">
+                <div 
+                  className="hospital-card-image"
+                  onClick={() => {
+                    navigate('/book-appointment', { state: { hospitalFilter: hospital.hospitalName } });
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
                   {hospital.logoUrl ? (
                     <img 
                       src={`${API_BASE_URL}${hospital.logoUrl}`} 
@@ -201,10 +207,6 @@ const HospitalAppointments = () => {
                   >
                     {hospital.hospitalName.charAt(0)}
                   </div>
-                  <span className={`hospital-type-badge ${badgeClass}`}>
-                    {hospitalType}
-                  </span>
-                  <button className="hospital-arrow-btn">›</button>
                 </div>
                 <div className="hospital-card-body">
                   <h3>{hospital.hospitalName}</h3>
@@ -220,12 +222,7 @@ const HospitalAppointments = () => {
                   <button
                     className="book-hospital-btn"
                     onClick={() => {
-                      const isLoggedIn = !!localStorage.getItem('token');
-                      if (isLoggedIn) {
-                        navigate('/book-appointment', { state: { hospitalFilter: hospital.hospitalName } });
-                      } else {
-                        navigate('/login?redirect=/hospitals');
-                      }
+                      navigate('/book-appointment', { state: { hospitalFilter: hospital.hospitalName } });
                     }}
                   >
                     Book an Appointment →

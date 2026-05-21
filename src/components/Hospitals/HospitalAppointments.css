@@ -197,6 +197,11 @@
   height: 180px;
   position: relative;
   overflow: hidden;
+  transition: opacity 0.2s ease;
+}
+
+.hospital-card-image:hover {
+  opacity: 0.9;
 }
 
 .hospital-card-image img {
