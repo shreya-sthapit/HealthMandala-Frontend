@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { auth } from '../config/firebase.ts';
-import './AuthNew.css';
+import './SignupNew.css';
 
 const Signup = () => {
+  console.log('🔴 SIGNUP COMPONENT LOADED - VERSION 2');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Only allow patient registration
@@ -146,7 +147,7 @@ const Signup = () => {
   };
 
   return (
-    <div className="auth-container">
+    <div className="signup-container">
       {/* Email Sent Popup */}
       {showPopup && (
         <div className="popup-overlay">
@@ -163,167 +164,128 @@ const Signup = () => {
         </div>
       )}
 
-      <div className="auth-split">
+      <div className="signup-split">
         {/* Left Panel */}
-        <div className="auth-left">
-          <div className="auth-brand">
-            <img src="/logo.png" alt="HealthMandala" className="auth-brand-logo" />
-            <span>HealthMandala</span>
-          </div>
-          <div className="auth-left-content">
-            <h1>Your Health,<br/>Our Priority</h1>
-            <p>Join thousands of patients booking smarter healthcare in Nepal.</p>
-            <div className="auth-features">
-              <div className="auth-feature-item">
-                <svg className="auth-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Book appointments with verified doctors instantly</span>
-              </div>
-              <div className="auth-feature-item">
-                <svg className="auth-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Access top hospitals across Nepal</span>
-              </div>
-              <div className="auth-feature-item">
-                <svg className="auth-feature-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                <span>Secure & private health records</span>
-              </div>
-            </div>
-          </div>
-          <div className="auth-illustration">
-            <img src="/Middle Image.png" alt="Healthcare" />
+        <div className="signup-left">
+          <div className="left-content">
+            <h1>Hello, Explorer!</h1>
+            <p>Enter your personal details and start your journey with us for better healthcare</p>
+            <button className="signin-btn" onClick={() => navigate('/login')}>
+              SIGN IN
+            </button>
           </div>
         </div>
 
         {/* Right Panel */}
-        <div className="auth-right">
-          <div className="auth-card">
-            <div className="auth-content-wrapper">
-              <div className="auth-header">
-                <h2>Create Account</h2>
-                <p>Join us for better healthcare</p>
-              </div>
+        <div className="signup-right">
+          <div style={{ height: '200px', backgroundColor: 'red', width: '100%' }}>SPACER TEST</div>
+          <div className="signup-form-wrapper">
+            <h2>Create Account</h2>
 
-        <div className="auth-toggle">
-          <button
-            className={`toggle-btn ${authMethod === 'email' ? 'active' : ''}`}
-            onClick={() => setAuthMethod('email')}
-          >
-            Email
-          </button>
-          <button
-            className={`toggle-btn ${authMethod === 'phone' ? 'active' : ''}`}
-            onClick={() => setAuthMethod('phone')}
-          >
-            Phone
-          </button>
-        </div>
+            <div className="auth-toggle">
+              <button
+                className={`toggle-btn ${authMethod === 'email' ? 'active' : ''}`}
+                onClick={() => setAuthMethod('email')}
+              >
+                Email
+              </button>
+              <button
+                className={`toggle-btn ${authMethod === 'phone' ? 'active' : ''}`}
+                onClick={() => setAuthMethod('phone')}
+              >
+                Phone
+              </button>
+            </div>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <div className="form-row">
-            <div className="form-group">
-              <label>First Name</label>
-              <input
-                type="text"
-                name="firstName"
-                placeholder="John"
-                value={formData.firstName}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Last Name</label>
-              <input
-                type="text"
-                name="lastName"
-                placeholder="Doe"
-                value={formData.lastName}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          </div>
-
-          {authMethod === 'email' ? (
-            <div className="form-group">
-              <label>Email Address</label>
-              <input
-                type="email"
-                name="email"
-                placeholder="john@example.com"
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
-            </div>
-          ) : (
-            <div className="form-group">
-              <label>Phone Number</label>
-              <div className="phone-input-group">
-                <span className="country-code">+977</span>
+            <form className="signup-form" onSubmit={handleSubmit}>
+              <div className="form-row">
                 <input
-                  type="tel"
-                  name="phone"
-                  placeholder="123-456-7890"
-                  value={formData.phone}
+                  type="text"
+                  name="firstName"
+                  placeholder="First Name"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  required
+                />
+                <input
+                  type="text"
+                  name="lastName"
+                  placeholder="Last Name"
+                  value={formData.lastName}
                   onChange={handleChange}
                   required
                 />
               </div>
-            </div>
-          )}
 
-          <div className="form-group">
-            <label>Password</label>
-            <div className="password-field">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                placeholder="Create a strong password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? 'Hide' : 'Show'}
+              {authMethod === 'email' ? (
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                />
+              ) : (
+                <div className="phone-input-group">
+                  <span className="country-code">+977</span>
+                  <input
+                    type="tel"
+                    name="phone"
+                    placeholder="Phone Number"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              )}
+
+              <div className="password-field">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  placeholder="Password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  👁
+                </button>
+              </div>
+
+              <div className="password-field">
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  placeholder="Confirm Password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  👁
+                </button>
+              </div>
+
+              {error && <p className="error-message">{error}</p>}
+
+              <button type="submit" className="signup-submit" disabled={isLoading}>
+                {isLoading ? 'CREATING...' : 'SIGN UP'}
               </button>
-            </div>
-          </div>
+            </form>
 
-          <div className="form-group">
-            <label>Confirm Password</label>
-            <input
-              type="password"
-              name="confirmPassword"
-              placeholder="Confirm your password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <p className="terms-text">
-            By signing up, you agree to our{' '}
-            <Link to="/terms">Terms of Service</Link> and{' '}
-            <Link to="/privacy">Privacy Policy</Link>
-          </p>
-
-          {error && <p className="error-message">{error}</p>}
-
-          <button type="submit" className="auth-submit" disabled={isLoading}>
-            {isLoading ? 'Creating Account...' : 'Create Account'}
-          </button>
-        </form>
-
-        <p className="auth-footer">
-          Already have an account? <Link to="/login">Login</Link>
-          <br />
-          Are you a Doctor? <Link to="/doctor-login">Sign in here</Link>
-        </p>
-            </div>
+            <p className="doctor-link">
+              Are you a Doctor? <Link to="/doctor-login">Sign in here</Link>
+            </p>
           </div>
         </div>
       </div>
