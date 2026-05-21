@@ -366,8 +366,12 @@ const SelectDoctor = () => {
 
               return (
                 <div key={doc.id} className="doctor-row">
-                  {/* Left: Doctor Info */}
-                  <div className="doctor-info-col">
+                  {/* Left: Doctor Info (Photo + Details side by side) */}
+                  <div 
+                    className="doctor-info-col"
+                    onClick={() => handleViewProfile(doc, nextAvailable)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className="doctor-photo">
                       {photoPath ? (
                         <img src={`http://localhost:5001/${photoPath}`} alt={doc.name}
@@ -392,7 +396,10 @@ const SelectDoctor = () => {
                       </p>
                       <button 
                         className="view-profile-btn"
-                        onClick={() => handleViewProfile(doc, nextAvailable)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewProfile(doc, nextAvailable);
+                        }}
                       >
                         View Profile ›
                       </button>
