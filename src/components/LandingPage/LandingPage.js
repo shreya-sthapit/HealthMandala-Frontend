@@ -100,6 +100,103 @@ const LandingPage = () => {
     return parts.join(', ') || 'Nepal';
   };
 
+  // Helper functions to calculate next available time
+  const getAvailableDays = (doc) => {
+    if (doc.hospitalSchedules && doc.hospitalSchedules.length > 0) {
+      const hospitalSchedule = doc.hospitalSchedules[0];
+      if (hospitalSchedule.schedule && hospitalSchedule.schedule.length > 0) {
+        return hospitalSchedule.schedule.filter(s => s.active).map(s => s.day);
+      }
+    }
+    if (doc.schedule && doc.schedule.length > 0) {
+      return doc.schedule.filter(s => s.active).map(s => s.day);
+    }
+    return doc.availableDays || [];
+  };
+
+  const getNextDates = (doc) => {
+    const days = getAvailableDays(doc);
+    if (!days.length) return [];
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const results = [];
+    for (let i = 0; i < 14 && results.length < 3; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      if (days.includes(dayNames[d.getDay()])) {
+        results.push(d);
+      }
+    }
+    return results;
+  };
+
+  const getTimeSlots = (doc, date) => {
+    const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][date.getDay()];
+    let start = doc.availableTimeStart || '09:00';
+    let end = doc.availableTimeEnd || '17:00';
+    let breakStart = null;
+    let breakEnd = null;
+    let hasBreak = false;
+    
+    let daySchedule = null;
+    if (doc.hospitalSchedules && doc.hospitalSchedules.length > 0) {
+      const hospitalSchedule = doc.hospitalSchedules[0];
+      if (hospitalSchedule.schedule) {
+        daySchedule = hospitalSchedule.schedule.find(s => s.day === dayName && s.active);
+      }
+    }
+    if (!daySchedule && doc.schedule) {
+      daySchedule = doc.schedule.find(s => s.day === dayName && s.active);
+    }
+    
+    if (daySchedule) {
+      start = daySchedule.start;
+      end = daySchedule.end;
+      if (daySchedule.hasBreak && daySchedule.breakStart && daySchedule.breakEnd) {
+        hasBreak = true;
+        breakStart = daySchedule.breakStart;
+        breakEnd = daySchedule.breakEnd;
+      }
+    }
+    
+    const slots = [];
+    const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
+    const toStr = m => { const h = Math.floor(m/60); const mn = m%60; return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`; };
+    
+    const startMin = toMin(start);
+    const endMin = toMin(end);
+    const breakStartMin = hasBreak ? toMin(breakStart) : null;
+    const breakEndMin = hasBreak ? toMin(breakEnd) : null;
+    
+    for (let m = startMin; m < endMin; m += 10) {
+      if (hasBreak && m >= breakStartMin && m < breakEndMin) {
+        continue;
+      }
+      slots.push(toStr(m));
+    }
+    
+    return slots;
+  };
+
+  const getNextAvailableTime = (doc) => {
+    const dates = getNextDates(doc);
+    if (dates.length === 0) return null;
+    
+    const firstDate = dates[0];
+    const slots = getTimeSlots(doc, firstDate);
+    if (slots.length === 0) return null;
+    
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = monthNames[firstDate.getMonth()];
+    const day = firstDate.getDate();
+    
+    const [hours, minutes] = slots[0].split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
+    const timeStr = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+    
+    return `Next Available: ${month} ${day} at ${timeStr}`;
+  };
+
   return (
     <>
       {/* Hero Section */}
@@ -326,10 +423,8 @@ const LandingPage = () => {
                   </div>
                   <h3>{doctor.name}</h3>
                   <p className="specialty">{doctor.specialty}</p>
-        <p className="availability">
-                    {doctor.availableTimeStart && doctor.availableTimeEnd
-                      ? `Available: ${doctor.availableTimeStart} – ${doctor.availableTimeEnd}`
-                      : 'Schedule available on booking'}
+                  <p className="availability">
+                    {getNextAvailableTime(doctor) || 'Contact clinic for availability'}
                   </p>
                   {isLoggedIn ? (
                     <button
@@ -348,7 +443,7 @@ const LandingPage = () => {
               })}
             </div>
             <div className="browse-footer">
-              <Link to="/signup" className="view-all-link">View all Doctors →</Link>
+              <Link to="/find-doctors" className="view-all-link">View all Doctors →</Link>
             </div>
           </>
         )}
@@ -366,30 +461,30 @@ const LandingPage = () => {
         <div className="specialties-scroll-wrapper">
           <div className="specialties-track">
             {[
-              { name: 'Ayurveda Physician', sub: 'Traditional Medicine Specialist', icon: '🌿' },
-              { name: 'Cardiologist', sub: 'Heart Specialist', icon: '🫀' },
-              { name: 'Dental Surgeon', sub: 'Teeth & Oral Specialist', icon: '🦷' },
-              { name: 'Dermatologist', sub: 'Skin & Hair Specialist', icon: '🧬' },
-              { name: 'Endocrinologist', sub: 'Diabetes & Hormone Specialist', icon: '⚗️' },
-              { name: 'Gastroenterologist', sub: 'Stomach & Liver Specialist', icon: '🫁' },
-              { name: 'General Physician', sub: 'Internal Medicine & Fever', icon: '🩺' },
-              { name: 'General Practitioner', sub: 'Family Doctor', icon: '👨‍⚕️' },
-              { name: 'General Surgeon', sub: 'General Operations', icon: '🏥' },
-              { name: 'Gynecologist & Obstetrician', sub: 'Women\'s Health & Pregnancy', icon: '🤰' },
-              { name: 'Nephrologist', sub: 'Kidney Specialist', icon: '🔬' },
-              { name: 'Neurologist', sub: 'Brain & Nerve Specialist', icon: '🧠' },
-              { name: 'Neurosurgeon', sub: 'Brain & Spine Surgeon', icon: '🧠' },
-              { name: 'Oncologist', sub: 'Cancer Specialist', icon: '🎗️' },
-              { name: 'Ophthalmologist', sub: 'Eye Specialist', icon: '👁️' },
-              { name: 'Orthopedic Surgeon', sub: 'Bone & Joint Specialist', icon: '🦴' },
-              { name: 'Otolaryngologist', sub: 'ENT - Ear, Nose & Throat Specialist', icon: '👂' },
-              { name: 'Pediatrician', sub: 'Child & Newborn Specialist', icon: '👶' },
-              { name: 'Physiotherapist', sub: 'Physical Rehab Specialist', icon: '🏃' },
-              { name: 'Psychiatrist', sub: 'Mental Health & Counseling Specialist', icon: '🧘' },
-              { name: 'Pulmonologist', sub: 'Chest & Lung Specialist', icon: '🫁' },
-              { name: 'Radiologist', sub: 'X-Ray & Ultrasound Specialist', icon: '📡' },
-              { name: 'Rheumatologist', sub: 'Arthritis & Joint Pain Specialist', icon: '🦴' },
-              { name: 'Urologist', sub: 'Urinary & Kidney Stone Specialist', icon: '🔬' },
+              { name: 'Ayurveda Physician', fullName: 'Ayurveda Physician (Traditional Medicine Specialist)', sub: 'Traditional Medicine Specialist', icon: '🌿' },
+              { name: 'Cardiologist', fullName: 'Cardiologist (Heart Specialist)', sub: 'Heart Specialist', icon: '🫀' },
+              { name: 'Dental Surgeon', fullName: 'Dental Surgeon (Teeth & Oral Specialist)', sub: 'Teeth & Oral Specialist', icon: '🦷' },
+              { name: 'Dermatologist', fullName: 'Dermatologist (Skin & Hair Specialist)', sub: 'Skin & Hair Specialist', icon: '🧬' },
+              { name: 'Endocrinologist', fullName: 'Endocrinologist (Diabetes & Hormone Specialist)', sub: 'Diabetes & Hormone Specialist', icon: '⚗️' },
+              { name: 'Gastroenterologist', fullName: 'Gastroenterologist (Stomach & Liver Specialist)', sub: 'Stomach & Liver Specialist', icon: '🫁' },
+              { name: 'General Physician', fullName: 'General Physician (Internal Medicine & Fever)', sub: 'Internal Medicine & Fever', icon: '🩺' },
+              { name: 'General Practitioner', fullName: 'General Practitioner (Family Doctor)', sub: 'Family Doctor', icon: '👨‍⚕️' },
+              { name: 'General Surgeon', fullName: 'General Surgeon (General Operations)', sub: 'General Operations', icon: '🏥' },
+              { name: 'Gynecologist & Obstetrician', fullName: 'Gynecologist & Obstetrician (Women\'s Health & Pregnancy)', sub: 'Women\'s Health & Pregnancy', icon: '🤰' },
+              { name: 'Nephrologist', fullName: 'Nephrologist (Kidney Specialist)', sub: 'Kidney Specialist', icon: '🔬' },
+              { name: 'Neurologist', fullName: 'Neurologist (Brain & Nerve Specialist)', sub: 'Brain & Nerve Specialist', icon: '🧠' },
+              { name: 'Neurosurgeon', fullName: 'Neurosurgeon (Brain & Spine Surgeon)', sub: 'Brain & Spine Surgeon', icon: '🧠' },
+              { name: 'Oncologist', fullName: 'Oncologist (Cancer Specialist)', sub: 'Cancer Specialist', icon: '🎗️' },
+              { name: 'Ophthalmologist', fullName: 'Ophthalmologist (Eye Specialist)', sub: 'Eye Specialist', icon: '👁️' },
+              { name: 'Orthopedic Surgeon', fullName: 'Orthopedic Surgeon (Bone & Joint Specialist)', sub: 'Bone & Joint Specialist', icon: '🦴' },
+              { name: 'Otolaryngologist', fullName: 'Otolaryngologist (ENT - Ear, Nose & Throat Specialist)', sub: 'ENT - Ear, Nose & Throat Specialist', icon: '👂' },
+              { name: 'Pediatrician', fullName: 'Pediatrician (Child & Newborn Specialist)', sub: 'Child & Newborn Specialist', icon: '👶' },
+              { name: 'Physiotherapist', fullName: 'Physiotherapist (Physical Rehab Specialist)', sub: 'Physical Rehab Specialist', icon: '🏃' },
+              { name: 'Psychiatrist', fullName: 'Psychiatrist (Mental Health & Counseling Specialist)', sub: 'Mental Health & Counseling Specialist', icon: '🧘' },
+              { name: 'Pulmonologist', fullName: 'Pulmonologist (Chest & Lung Specialist)', sub: 'Chest & Lung Specialist', icon: '🫁' },
+              { name: 'Radiologist', fullName: 'Radiologist (X-Ray & Ultrasound Specialist)', sub: 'X-Ray & Ultrasound Specialist', icon: '📡' },
+              { name: 'Rheumatologist', fullName: 'Rheumatologist (Arthritis & Joint Pain Specialist)', sub: 'Arthritis & Joint Pain Specialist', icon: '🦴' },
+              { name: 'Urologist', fullName: 'Urologist (Urinary & Kidney Stone Specialist)', sub: 'Urinary & Kidney Stone Specialist', icon: '🔬' },
             ].map((spec, idx) => (
               <div key={idx} className="specialty-card-new">
                 <div className="specialty-icon-box">
@@ -410,8 +505,8 @@ const LandingPage = () => {
                   })()} Doctors
                 </p>
                 <Link
-                  to={isLoggedIn && userRole === 'patient' ? '/book-appointment' : '/auth?role=patient&mode=signup'}
-                  state={isLoggedIn && userRole === 'patient' ? { specialtyFilter: spec.name } : undefined}
+                  to="/find-doctors"
+                  state={{ preSelectedSpecialty: spec.fullName }}
                   className="consult-btn"
                 >Consult Now</Link>
               </div>
@@ -464,15 +559,11 @@ const LandingPage = () => {
                   </div>
                   <h3>{hospital.hospitalName}</h3>
                   <p className="location">{getHospitalLocation(hospital)}</p>
-                  {isLoggedIn && userRole === 'patient' ? (
-                    <Link
-                      to="/book-appointment"
-                      state={{ hospitalFilter: hospital.hospitalName }}
-                      className="btn btn-primary btn-small"
-                    >Book an Appointment</Link>
-                  ) : (
-                    <Link to="/auth?role=patient&mode=signup" className="btn btn-primary btn-small">Book an Appointment</Link>
-                  )}
+                  <Link
+                    to="/book-appointment"
+                    state={{ hospitalFilter: hospital.hospitalName }}
+                    className="btn btn-primary btn-small"
+                  >Book an Appointment</Link>
                 </div>
               ))}
             </div>
