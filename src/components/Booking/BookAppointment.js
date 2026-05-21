@@ -1,6 +1,103 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import './Booking.css';
+import '../Doctors/SelectDoctor.css';
+import '../Doctors/DoctorProfileModal.css';
+
+// Nepal address data
+const NEPAL_DATA = {
+  'Koshi Province': {
+    'Taplejung': ['Phungling Municipality','Sidingba Rural Municipality','Sirijangha Rural Municipality'],
+    'Sankhuwasabha': ['Chainpur Municipality','Dharmadevi Municipality','Panchkhapan Municipality'],
+    'Bhojpur': ['Bhojpur Municipality','Shadananda Municipality','Tyamkemaiyung Rural Municipality'],
+    'Dhankuta': ['Dhankuta Municipality','Pakhribas Municipality','Mahalaxmi Municipality'],
+    'Morang': ['Biratnagar Metropolitan City','Urlabari Municipality','Pathari Shanischare Municipality'],
+    'Sunsari': ['Dharan Sub-Metropolitan City','Itahari Sub-Metropolitan City','Inaruwa Municipality'],
+    'Jhapa': ['Mechinagar Municipality','Bhadrapur Municipality','Birtamod Municipality','Damak Municipality'],
+    'Ilam': ['Ilam Municipality','Deumai Municipality','Mai Municipality','Suryodaya Municipality'],
+  },
+  'Madhesh Province': {
+    'Parsa': ['Birgunj Metropolitan City','Bahudarmai Municipality','Parsagadhi Municipality'],
+    'Bara': ['Kalaiya Sub-Metropolitan City','Jitpur Simara Sub-Metropolitan City','Kolhabi Municipality'],
+    'Rautahat': ['Gaur Municipality','Chandrapur Municipality','Garuda Municipality'],
+    'Sarlahi': ['Malangwa Municipality','Haripur Municipality','Lalbandi Municipality'],
+    'Dhanusha': ['Janakpurdham Sub-Metropolitan City','Chhireshwornath Municipality','Dhanusadham Municipality'],
+    'Siraha': ['Lahan Municipality','Siraha Municipality','Golbazar Municipality'],
+    'Saptari': ['Rajbiraj Municipality','Kanchanrup Municipality','Bodebarsain Municipality'],
+  },
+  'Bagmati Province': {
+    'Kathmandu': ['Kathmandu Metropolitan City','Kirtipur Municipality','Shankharapur Municipality','Gokarneshwar Municipality','Kageshwari Manohara Municipality','Nagarjun Municipality','Tarakeshwar Municipality','Tokha Municipality','Budhanilkantha Municipality','Chandragiri Municipality','Dakshinkali Municipality'],
+    'Lalitpur': ['Lalitpur Metropolitan City','Godawari Municipality','Mahalaxmi Municipality','Konjyosom Rural Municipality','Bagmati Rural Municipality'],
+    'Bhaktapur': ['Bhaktapur Municipality','Madhyapur Thimi Municipality','Changunarayan Municipality','Suryabinayak Municipality'],
+    'Kavrepalanchok': ['Banepa Municipality','Dhulikhel Municipality','Panauti Municipality','Panchkhal Municipality','Namobuddha Municipality'],
+    'Sindhupalchok': ['Chautara Sangachokgadhi Municipality','Melamchi Municipality','Bahrabise Municipality'],
+    'Makwanpur': ['Hetauda Sub-Metropolitan City','Thaha Municipality','Bakaiya Rural Municipality'],
+    'Chitwan': ['Bharatpur Metropolitan City','Ratnanagar Municipality','Khairahani Municipality'],
+  },
+  'Gandaki Province': {
+    'Kaski': ['Pokhara Metropolitan City','Annapurna Rural Municipality','Machhapuchchhre Rural Municipality'],
+    'Syangja': ['Waling Municipality','Putalibazar Municipality','Galyang Municipality'],
+    'Tanahu': ['Damauli Municipality','Bhimad Municipality','Byas Municipality'],
+    'Gorkha': ['Gorkha Municipality','Palungtar Municipality','Arughat Rural Municipality'],
+    'Lamjung': ['Besisahar Municipality','Sundarbazar Municipality','Dordi Rural Municipality'],
+  },
+  'Lumbini Province': {
+    'Rupandehi': ['Butwal Sub-Metropolitan City','Siddharthanagar Municipality','Tilottama Municipality','Devdaha Municipality'],
+    'Kapilvastu': ['Kapilvastu Municipality','Banganga Municipality','Buddhabhumi Municipality'],
+    'Palpa': ['Tansen Municipality','Rampur Municipality','Ridi Municipality'],
+    'Nawalparasi (East)': ['Kawasoti Municipality','Devchuli Municipality','Gaindakot Municipality'],
+    'Dang': ['Tulsipur Sub-Metropolitan City','Ghorahi Sub-Metropolitan City','Lamahi Municipality'],
+    'Banke': ['Nepalgunj Sub-Metropolitan City','Kohalpur Municipality','Duduwa Rural Municipality'],
+  },
+  'Karnali Province': {
+    'Surkhet': ['Birendranagar Municipality','Bheriganga Municipality','Gurbhakot Municipality'],
+    'Dailekh': ['Narayan Municipality','Dullu Municipality','Aathabis Municipality'],
+    'Jumla': ['Chandannath Municipality','Guthichaur Rural Municipality','Hima Rural Municipality'],
+    'Salyan': ['Sharada Municipality','Bangad Kupinde Municipality','Bagchaur Municipality'],
+    'Dolpa': ['Thuli Bheri Municipality','Tripurasundari Municipality'],
+  },
+  'Sudurpashchim Province': {
+    'Kailali': ['Dhangadhi Sub-Metropolitan City','Tikapur Municipality','Bhajani Municipality','Ghodaghodi Municipality'],
+    'Kanchanpur': ['Mahendranagar Municipality','Bedkot Municipality','Belauri Municipality','Bhimdatta Municipality'],
+    'Dadeldhura': ['Amargadhi Municipality','Parashuram Municipality'],
+    'Baitadi': ['Dasharathchand Municipality','Patan Municipality','Melauli Municipality'],
+    'Doti': ['Dipayal Silgadhi Municipality','Shikhar Municipality'],
+  },
+};
+
+const PROVINCES = Object.keys(NEPAL_DATA);
+
+// Department icon mapping - same as hospital dashboard
+const DEPT_ICONS = {
+  'Cardiologist (Heart Specialist)': '🫀',
+  'Dermatologist (Skin & Hair Specialist)': '🧴',
+  'Endocrinologist (Diabetes & Hormone Specialist)': '🩸',
+  'Gastroenterologist (Stomach & Liver Specialist)': '�',
+  'General Physician (Internal Medicine & Fever)': '�',
+  'General Practitioner (Family Doctor)': '👨‍⚕️',
+  'General Surgeon (General Operations)': '�',
+  "Gynecologist & Obstetrician (Women's Health & Pregnancy)": '🌸',
+  'Nephrologist (Kidney Specialist)': '�',
+  'Neurologist (Brain & Nerve Specialist)': '🧠',
+  'Neurosurgeon (Brain & Spine Surgeon)': '🧬',
+  'Oncologist (Cancer Specialist)': '🎗️',
+  'Ophthalmologist (Eye Specialist)': '👁️',
+  'Orthopedic Surgeon (Bone & Joint Specialist)': '🦴',
+  'Otolaryngologist (ENT - Ear, Nose & Throat Specialist)': '👂',
+  'Pediatrician (Child & Newborn Specialist)': '👶',
+  'Physiotherapist (Physical Rehab Specialist)': '🏃',
+  'Psychiatrist (Mental Health & Counseling Specialist)': '�',
+  'Pulmonologist (Chest & Lung Specialist)': '🫁',
+  'Radiologist (X-Ray & Ultrasound Specialist)': '🔬',
+  'Rheumatologist (Arthritis & Joint Pain Specialist)': '�',
+  'Urologist (Urinary & Kidney Stone Specialist)': '💧',
+  'Dental Surgeon (Teeth & Oral Specialist)': '🦷',
+  'Ayurveda Physician (Traditional Medicine Specialist)': '🌿',
+};
+
+const getDepartmentIcon = (departmentName) => {
+  return DEPT_ICONS[departmentName] || '🏥';
+};
 
 const BookAppointment = () => {
   const navigate = useNavigate();
@@ -11,7 +108,12 @@ const BookAppointment = () => {
   const hospitalFilter = location.state?.hospitalFilter || null; // from hospital page
   const specialtyFilter = location.state?.specialtyFilter || null; // from specialty card
   
-  const [step, setStep] = useState(preSelectedDoctor ? 2 : 1);
+  const [step, setStep] = useState(() => {
+    // Always start at step 1 when coming from hospital page
+    if (hospitalFilter) return 1;
+    // Start at step 2 only if there's a preselected doctor (from other flows)
+    return preSelectedDoctor ? 2 : 1;
+  });
   const [searchMode, setSearchMode] = useState(hospitalFilter ? 'browse' : 'specialty');
   const [searchTerm, setSearchTerm] = useState('');
   const [doctors, setDoctors] = useState([]);
@@ -23,27 +125,32 @@ const BookAppointment = () => {
   const [selectedDependent, setSelectedDependent] = useState(null);
   const [dependentSearch, setDependentSearch] = useState('');
   const [patientInfo, setPatientInfo] = useState(null);
+  const [dependents, setDependents] = useState([]);
+  const [selectedDepartmentDoctorIds, setSelectedDepartmentDoctorIds] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [showAddDependentModal, setShowAddDependentModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedDoctorProfile, setSelectedDoctorProfile] = useState(null);
   const [newDependent, setNewDependent] = useState({
     firstName: '',
     lastName: '',
     age: '',
-    ageType: 'Year',
     dobAD: '',
     dobBS: '',
-    isRealDOB: false,
     phone: '',
     email: '',
     gender: '',
     relationship: '',
+    province: '',
     district: '',
-    vdcMunicipality: '',
-    ward: '',
+    palika: '',
     address: ''
   });
   const [booking, setBooking] = useState({
     specialty: preSelectedDoctor?.specialtyId || specialtyFilter || '',
     doctor: preSelectedDoctor || null,
+    selectedDepartment: null,
     date: null,
     tokenNumber: null,
     availableTokens: 0,
@@ -77,6 +184,33 @@ const BookAppointment = () => {
     { id: 8, name: 'Dr. Hari Prasad', specialty: 'Dentist', specialtyId: 'dental', rating: 4.8, patients: '1.3k', experience: '14 yrs', fee: 800, available: true },
     { id: 9, name: 'Dr. Ram Sharma', specialty: 'General Physician', specialtyId: 'general', rating: 4.5, patients: '2k', experience: '20 yrs', fee: 600, available: true }
   ];
+
+  // Fetch departments when hospital filter is present
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      if (!hospitalFilter) return;
+      
+      setLoadingDepartments(true);
+      try {
+        const response = await fetch(`http://localhost:5001/api/hospital-dashboard/departments/public/${encodeURIComponent(hospitalFilter)}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          setDepartments(data.departments || []);
+        } else {
+          console.error('Failed to fetch departments:', data.error);
+          setDepartments([]);
+        }
+      } catch (error) {
+        console.error('Error fetching departments:', error);
+        setDepartments([]);
+      } finally {
+        setLoadingDepartments(false);
+      }
+    };
+
+    fetchDepartments();
+  }, [hospitalFilter]);
 
   // Fetch approved doctors from API
   useEffect(() => {
@@ -247,6 +381,8 @@ const BookAppointment = () => {
         // The API returns 'profile' not 'patient'
         if (data.success && data.profile) {
           setPatientInfo(data.profile);
+          // Set dependents from the profile
+          setDependents(data.profile.dependents || []);
         } else {
           console.log('No patient profile found or not approved yet');
         }
@@ -409,12 +545,16 @@ const BookAppointment = () => {
   const getFilteredDoctors = () => {
     let filtered = doctors;
 
-    // Hospital filter — from hospital booking page
+    // Hospital flow — filter to doctors belonging to the selected department
     if (hospitalFilter) {
-      filtered = filtered.filter(doc =>
-        doc.hospital && typeof doc.hospital === 'string' && doc.hospital.toLowerCase().includes(hospitalFilter.toLowerCase())
-      );
-      // In hospital mode, show all filtered doctors (browse mode)
+      if (selectedDepartmentDoctorIds.length > 0) {
+        filtered = filtered.filter(doc =>
+          selectedDepartmentDoctorIds.includes(String(doc.id || doc._id))
+        );
+      } else {
+        // No department selected yet — show nothing
+        filtered = [];
+      }
       if (searchTerm) {
         filtered = filtered.filter(doc =>
           doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -441,6 +581,148 @@ const BookAppointment = () => {
       }
       return false;
     });
+  };
+
+  // Helper functions for doctor schedule display (matching SelectDoctor)
+  const getAvailableDays = (doc) => {
+    if (doc.hospitalSchedules && doc.hospitalSchedules.length > 0) {
+      const hospitalSchedule = doc.hospitalSchedules[0];
+      if (hospitalSchedule.schedule && hospitalSchedule.schedule.length > 0) {
+        return hospitalSchedule.schedule.filter(s => s.active).map(s => s.day);
+      }
+    }
+    if (doc.schedule && doc.schedule.length > 0) {
+      return doc.schedule.filter(s => s.active).map(s => s.day);
+    }
+    return doc.availableDays || [];
+  };
+
+  const getNextDates = (doc) => {
+    const days = getAvailableDays(doc);
+    if (!days.length) return [];
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const results = [];
+    for (let i = 0; i < 14 && results.length < 3; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      if (days.includes(dayNames[d.getDay()])) {
+        results.push(d);
+      }
+    }
+    return results;
+  };
+
+  const getNextAvailableTime = (doc) => {
+    const dates = getNextDates(doc);
+    if (dates.length === 0) return null;
+    
+    const firstDate = dates[0];
+    const slots = getTimeSlots(doc, firstDate);
+    if (slots.length === 0) return null;
+    
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = monthNames[firstDate.getMonth()];
+    const day = firstDate.getDate();
+    
+    const [hours, minutes] = slots[0].split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
+    const timeStr = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+    
+    return `${month} ${day} at ${timeStr}`;
+  };
+
+  const getTimeSlots = (doc, date) => {
+    const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][date.getDay()];
+    let start = doc.availableTimeStart || '09:00';
+    let end = doc.availableTimeEnd || '17:00';
+    let breakStart = null;
+    let breakEnd = null;
+    let hasBreak = false;
+    
+    let daySchedule = null;
+    if (doc.hospitalSchedules && doc.hospitalSchedules.length > 0) {
+      const hospitalSchedule = doc.hospitalSchedules[0];
+      if (hospitalSchedule.schedule) {
+        daySchedule = hospitalSchedule.schedule.find(s => s.day === dayName && s.active);
+      }
+    }
+    if (!daySchedule && doc.schedule) {
+      daySchedule = doc.schedule.find(s => s.day === dayName && s.active);
+    }
+    
+    if (daySchedule) {
+      start = daySchedule.start;
+      end = daySchedule.end;
+      if (daySchedule.hasBreak && daySchedule.breakStart && daySchedule.breakEnd) {
+        hasBreak = true;
+        breakStart = daySchedule.breakStart;
+        breakEnd = daySchedule.breakEnd;
+      }
+    }
+    
+    const slots = [];
+    const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
+    const toStr = m => { const h = Math.floor(m/60); const mn = m%60; return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`; };
+    
+    const startMin = toMin(start);
+    const endMin = toMin(end);
+    const breakStartMin = hasBreak ? toMin(breakStart) : null;
+    const breakEndMin = hasBreak ? toMin(breakEnd) : null;
+    
+    for (let m = startMin; m < endMin; m += 10) {
+      if (hasBreak && m >= breakStartMin && m < breakEndMin) {
+        continue;
+      }
+      slots.push(toStr(m));
+    }
+    
+    return slots;
+  };
+
+  const handleBookSlot = (doc, date, time) => {
+    const photoPath = doc.profilePhoto
+      ? doc.profilePhoto.replace(/\\/g, '/').replace(/^backend\//, '')
+      : null;
+    
+    setBooking(prev => ({
+      ...prev,
+      doctor: {
+        id: doc.id, 
+        _id: doc.id,
+        name: doc.name, 
+        specialty: doc.specialty,
+        specialtyId: doc.specialtyId, 
+        rating: doc.rating,
+        patients: doc.patients, 
+        experience: doc.experience,
+        fee: doc.fee, 
+        hospital: doc.hospital, 
+        currentHospital: doc.currentHospital || doc.hospital,
+        profilePhoto: photoPath,
+        schedule: doc.schedule, 
+        hospitalSchedules: doc.hospitalSchedules,
+        lunchBreak: doc.lunchBreak,
+        leaves: doc.leaves, 
+        availableDays: doc.availableDays,
+        availableTimeStart: doc.availableTimeStart,
+        availableTimeEnd: doc.availableTimeEnd,
+        consultationDuration: doc.consultationDuration,
+        nmcNumber: doc.nmcNumber,
+        qualification: doc.qualification,
+      },
+      date: {
+        day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()],
+        date: date.getDate(),
+        month: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.getMonth()],
+        full: date.toISOString().split('T')[0],
+        dayName: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()]
+      },
+      appointmentTime: time
+    }));
+    
+    setSelectedSlot(time);
+    setStep(4);
   };
 
   const getAvailableDates = async () => {
@@ -762,60 +1044,6 @@ const BookAppointment = () => {
     return null;
   };
 
-  const getNextAvailableTime = (doctor) => {
-    if (!doctor) return null;
-    
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    let doctorAvailableDays = [];
-    
-    // Check hospitalSchedules first (correct structure)
-    if (doctor.hospitalSchedules && doctor.hospitalSchedules.length > 0) {
-      const currentHospitalSchedule = doctor.hospitalSchedules[0]; // Get first hospital schedule
-      if (currentHospitalSchedule.schedule && currentHospitalSchedule.schedule.length > 0) {
-        doctorAvailableDays = currentHospitalSchedule.schedule.filter(s => s.active);
-      }
-    } else if (doctor.schedule && doctor.schedule.length > 0) {
-      doctorAvailableDays = doctor.schedule.filter(s => s.active);
-    } else if (doctor.availableDays && doctor.availableDays.length > 0) {
-      doctorAvailableDays = doctor.availableDays.map(day => ({ day, start: doctor.availableTimeStart, end: doctor.availableTimeEnd }));
-    }
-    
-    if (doctorAvailableDays.length === 0) return null;
-    
-    // Find next available day starting from today
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    
-    for (let i = 0; i < 14; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() + i);
-      const dayName = dayNames[date.getDay()];
-      
-      const daySchedule = doctorAvailableDays.find(d => d.day === dayName);
-      if (daySchedule) {
-        const [startHours, startMinutes] = (daySchedule.start || '09:00').split(':');
-        const startHour = parseInt(startHours);
-        const startMin = parseInt(startMinutes);
-        
-        // If it's today, check if the start time hasn't passed yet
-        if (i === 0) {
-          if (currentHour > startHour || (currentHour === startHour && currentMinute >= startMin)) {
-            // Start time has passed today, continue to next day
-            continue;
-          }
-        }
-        
-        const timeLabel = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        const ampm = startHour >= 12 ? 'PM' : 'AM';
-        const hour12 = startHour % 12 || 12;
-        return `${timeLabel} at ${hour12}:${startMinutes} ${ampm}`;
-      }
-    }
-    
-    return null;
-  };
-
   const isDateOnLeave = (dateStr) => {
     if (!booking.doctor || !booking.doctor.leaves || booking.doctor.leaves.length === 0) {
       return false;
@@ -849,28 +1077,8 @@ const BookAppointment = () => {
     }
 
     try {
-      // Simulate eSewa payment process
-      if (booking.paymentMethod === 'esewa') {
-        const confirmPayment = window.confirm(
-          `You will be redirected to eSewa to pay Rs. ${booking.doctor.fee}. Continue?`
-        );
-        
-        if (!confirmPayment) {
-          return;
-        }
-
-        // Simulate payment processing
-        const paymentSuccess = await simulateEsewaPayment(booking.doctor.fee);
-        
-        if (!paymentSuccess) {
-          alert('Payment failed. Please try again.');
-          return;
-        }
-      }
-
-      // Get user data from localStorage
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      
+
       const appointmentData = {
         patientId: userData.id || null,
         doctorId: booking.doctor.id || booking.doctor._id || null,
@@ -881,63 +1089,76 @@ const BookAppointment = () => {
         doctorSpecialization: booking.doctor.specialty || booking.doctor.specialization,
         hospital: booking.doctor.hospital || booking.doctor.currentHospital?.[0] || '',
         appointmentDate: booking.date.full,
-        appointmentTime: selectedSlot, // Include selected slot time
+        appointmentTime: selectedSlot,
         tokenNumber: booking.tokenNumber,
         appointmentType: 'consultation',
         reasonForVisit: booking.reason || 'General consultation',
         consultationFee: booking.doctor.fee || booking.doctor.consultationFee,
         patientNotes: booking.reason || '',
-        paymentMethod: booking.paymentMethod,
-        paymentStatus: booking.paymentMethod === 'esewa' ? 'paid' : 'pending'
+        paymentMethod: 'khalti',
+        paymentStatus: 'pending',
       };
 
-      console.log('Booking appointment:', appointmentData);
+      // Amount in paisa (Rs × 100)
+      const amountPaisa = Math.round((booking.doctor.fee || 0) * 100);
+      const orderId = `APPT-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+      const returnUrl = `${window.location.origin}/khalti-return`;
 
-      const response = await fetch('http://localhost:5001/api/appointments/book', {
+      // Initiate Khalti payment via backend
+      const initiateRes = await fetch('http://localhost:5001/api/khalti/initiate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(appointmentData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: amountPaisa,
+          orderId,
+          orderName: `Appointment with ${booking.doctor.name}`,
+          customerName: appointmentData.patientName,
+          customerEmail: appointmentData.patientEmail,
+          customerPhone: appointmentData.patientPhone,
+          returnUrl,
+        }),
       });
 
-      const data = await response.json();
+      const initiateData = await initiateRes.json();
 
-      if (data.success) {
-        navigate('/booking-confirmed', { 
-          state: { 
-            booking: { ...booking, appointmentTime: selectedSlot },
-            appointmentId: data.appointment.id,
-            paymentStatus: appointmentData.paymentStatus
-          } 
-        });
-      } else {
-        alert(data.error || 'Failed to book appointment. Please try again.');
+      if (!initiateData.success || !initiateData.paymentUrl) {
+        alert(initiateData.error || 'Failed to initiate Khalti payment. Please try again.');
+        return;
       }
+
+      // Save appointment data to sessionStorage so KhaltiReturn can complete the booking
+      sessionStorage.setItem('khaltiPendingAppointment', JSON.stringify({
+        appointmentData,
+        bookingState: { ...booking, appointmentTime: selectedSlot },
+      }));
+
+      // Redirect to Khalti payment page
+      window.location.href = initiateData.paymentUrl;
+
     } catch (error) {
       console.error('Booking error:', error);
-      alert('Failed to book appointment. Please check your connection and try again.');
+      alert('Failed to initiate payment. Please check your connection and try again.');
     }
   };
 
-  const simulateEsewaPayment = async (amount) => {
-    return new Promise((resolve) => {
-      // Simulate payment processing delay
-      setTimeout(() => {
-        // Simulate 90% success rate
-        const success = Math.random() > 0.1;
-        if (success) {
-          alert(`Payment of Rs. ${amount} successful via eSewa!`);
-        }
-        resolve(success);
-      }, 2000);
-    });
-  };
-
   const canProceed = () => {
-    if (step === 1) return booking.doctor;
-    if (step === 2) return booking.date && selectedSlot;
-    if (step === 3) return selectedDependent; // Must select a dependent
+    if (step === 1) {
+      // Hospital flow: department click navigates directly, no Continue button needed
+      if (hospitalFilter) return false;
+      // General flow: require doctor selection
+      return booking.doctor;
+    }
+    if (step === 2) {
+      // Hospital flow step 2 is doctor selection — handled by card click, no Continue button
+      if (hospitalFilter) return false;
+      return booking.date && selectedSlot;
+    }
+    if (step === 3) {
+      // Hospital flow step 3 is date/time selection
+      if (hospitalFilter) return booking.date && selectedSlot;
+      return selectedDependent;
+    }
+    if (step === 4) return selectedDependent;
     return true;
   };
 
@@ -955,14 +1176,14 @@ const BookAppointment = () => {
             </div>
           </div>
           <div className="stepper-line"></div>
-          <div className={`stepper-step ${step === 1 ? 'active' : ''}`}>
+          <div className={`stepper-step ${step === 2 ? 'active' : ''}`}>
             <div className="step-label">
               <div className="step-title">STEP 2</div>
               <div className="step-desc">Select the doctor</div>
             </div>
           </div>
           <div className="stepper-line"></div>
-          <div className={`stepper-step ${step === 2 ? 'active' : ''}`}>
+          <div className={`stepper-step ${step === 3 ? 'active' : ''}`}>
             <div className="step-label">
               <div className="step-title">STEP 3</div>
               <div className="step-desc">Select Appointment time</div>
@@ -985,95 +1206,123 @@ const BookAppointment = () => {
         </div>
 
         <div className="booking-layout">
-          <div className="booking-main">
-            {/* Step 1: Select Specialty & Doctor */}
+          <div className="booking-main" style={step === 2 && hospitalFilter ? { background: 'transparent', boxShadow: 'none', padding: 0 } : {}}>
+            {/* Step 1: Select Department (Hospital Flow) or Select Specialty & Doctor (General Flow) */}
             {step === 1 && (
               <>
-                {/* Hospital filter banner */}
+                {/* Hospital filter banner + search row */}
                 {hospitalFilter && (
-                  <div style={{ background: '#f0fdfa', border: '1px solid #d1faf4', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.88rem', color: '#065f46' }}>
-                    Showing doctors available at <strong>{hospitalFilter}</strong>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', gap: '1rem' }}>
+                    <h2 style={{ fontSize: '1.1rem', color: '#065f46', fontWeight: 700, margin: 0, flexShrink: 0 }}>
+                      Departments available at <strong>{hospitalFilter}</strong>
+                    </h2>
+                    {/* Department Search Box */}
+                    <div style={{ position: 'relative', width: '260px', flexShrink: 0 }}>
+                      <svg
+                        style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#a0aec0' }}
+                        width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                      >
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                      <input
+                        type="text"
+                        placeholder="Search by name..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.65rem 1rem 0.65rem 2.75rem',
+                          border: '1.5px solid #dce3ef',
+                          borderRadius: '999px',
+                          fontSize: '0.9rem',
+                          outline: 'none',
+                          boxSizing: 'border-box',
+                          color: '#4a5568',
+                          background: '#ffffff',
+                          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                          transition: 'border-color 0.2s, box-shadow 0.2s',
+                        }}
+                        onFocus={e => { e.target.style.borderColor = '#a0aec0'; e.target.style.boxShadow = '0 1px 6px rgba(0,0,0,0.1)'; }}
+                        onBlur={e => { e.target.style.borderColor = '#dce3ef'; e.target.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'; }}
+                      />
+                    </div>
                   </div>
                 )}
 
-                {/* Search Mode Toggle — hide when hospital filter is active */}
-                {!hospitalFilter && (
-                <div className="search-mode-toggle">
-                  <button 
-                    className={`mode-btn ${searchMode === 'specialty' ? 'active' : ''}`}
-                    onClick={() => { setSearchMode('specialty'); setSearchTerm(''); }}
-                  >
-                    By Specialty
-                  </button>
-                  <button 
-                    className={`mode-btn ${searchMode === 'browse' ? 'active' : ''}`}
-                    onClick={() => { setSearchMode('browse'); setBooking(prev => ({ ...prev, specialty: '' })); }}
-                  >
-                    Browse All Doctors
-                  </button>
-                </div>
-                )}
-
-                {loading ? (
-                  <div className="loading-state">
-                    <div className="loading-spinner"></div>
-                    <p>Loading doctors...</p>
+                {/* Hospital Flow - Show Departments */}
+                {hospitalFilter ? (
+                  <div className="department-selection">
+                    {loadingDepartments ? (
+                      <div className="loading-state">
+                        <div className="loading-spinner"></div>
+                        <p>Loading departments...</p>
+                      </div>
+                    ) : departments.length > 0 ? (
+                      <div className="department-grid">
+                        {departments.filter(dept => dept.name.toLowerCase().includes(searchTerm.toLowerCase())).length > 0 ? (
+                          departments.filter(dept => dept.name.toLowerCase().includes(searchTerm.toLowerCase())).map((dept) => {
+                            const icon = getDepartmentIcon(dept.name);
+                            const match = dept.name.match(/^([^(]+)\s*(\(.*\))?$/);
+                            const main = match?.[1]?.trim() || dept.name;
+                            const sub = match?.[2]?.trim();
+                            return (
+                              <div
+                                key={dept._id}
+                                className="department-card-new"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => {
+                                  const doctorIds = (dept.doctors || []).map(d => String(d._id || d));
+                                  setSelectedDepartmentDoctorIds(doctorIds);
+                                  setBooking(prev => ({ ...prev, selectedDepartment: dept.name, doctor: null }));
+                                  setSearchTerm('');
+                                  setStep(2);
+                                }}
+                              >
+                                <div className="dept-icon-container">
+                                  <div className="dept-icon">{icon}</div>
+                                </div>
+                                <h3 className="dept-name">{main}</h3>
+                                {sub && <p className="dept-subtitle">{sub}</p>}
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="no-departments" style={{ gridColumn: '1 / -1' }}>
+                            <p>No departments match "<strong>{searchTerm}</strong>".</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="no-departments">
+                        <p>No departments found for {hospitalFilter}.</p>
+                        <p>Please contact the hospital directly or try another hospital.</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
+                  /* Original Flow - Show Specialties and Doctors */
                   <>
-                    {/* Hospital filter mode — show doctors directly */}
-                    {hospitalFilter ? (
-                      <div className="doctor-browse">
-                        <h2>Available Doctors</h2>
-                        <div className="doctor-search-bar">
-                          <span className="search-icon">S</span>
-                          <input
-                            type="text"
-                            placeholder="Search by name or specialty..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                          />
-                          {searchTerm && (
-                            <button className="clear-search" onClick={() => setSearchTerm('')}>X</button>
-                          )}
-                        </div>
-                        <div className="doctors-list browse-list">
-                          {filteredDoctors.length > 0 ? (
-                            filteredDoctors.map((doc) => (
-                              <div
-                                key={doc.id}
-                                className={`doctor-option ${booking.doctor?.id === doc.id ? 'selected' : ''}`}
-                                onClick={() => setBooking(prev => ({ ...prev, doctor: doc, specialty: doc.specialtyId }))}
-                              >
-                                <div className="avatar">
-                                  {doc.profilePhoto ? (
-                                    <img src={`http://localhost:5001/${doc.profilePhoto}`} alt={doc.name}
-                                      onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
-                                  ) : null}
-                                  <div className="avatar-fallback" style={{ display: doc.profilePhoto ? 'none' : 'flex' }}>
-                                    {doc.name.split(' ')[1]?.[0] || 'D'}
-                                  </div>
-                                </div>
-                                <div className="info">
-                                  <h3>{doc.name}</h3>
-                                  <p>{doc.specialty} • {doc.experience} experience</p>
-                                  <div className="stats">
-                                    <span className="rating">{doc.rating.toFixed(1)} rating</span>
-                                    <span>{doc.patients} patients</span>
-                                    <span>Rs. {doc.fee}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="no-results">
-                              <p>No doctors found at {hospitalFilter}.</p>
-                              <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem' }}>
-                                Doctors appear here once they register and select this hospital.
-                              </p>
-                            </div>
-                          )}
-                        </div>
+                    {/* Search Mode Toggle */}
+                    <div className="search-mode-toggle">
+                      <button 
+                        className={`mode-btn ${searchMode === 'specialty' ? 'active' : ''}`}
+                        onClick={() => { setSearchMode('specialty'); setSearchTerm(''); }}
+                      >
+                        By Specialty
+                      </button>
+                      <button 
+                        className={`mode-btn ${searchMode === 'browse' ? 'active' : ''}`}
+                        onClick={() => { setSearchMode('browse'); setBooking(prev => ({ ...prev, specialty: '' })); }}
+                      >
+                        Browse All Doctors
+                      </button>
+                    </div>
+
+                    {loading ? (
+                      <div className="loading-state">
+                        <div className="loading-spinner"></div>
+                        <p>Loading doctors...</p>
                       </div>
                     ) : searchMode === 'specialty' ? (
                       <>
@@ -1213,8 +1462,425 @@ const BookAppointment = () => {
               </>
             )}
 
-            {/* Step 2: Select Date & Time - Side by Side Layout */}
-            {step === 2 && (
+            {/* Step 2 (Hospital Flow): Select Doctor from Department */}
+            {step === 2 && hospitalFilter && (
+              <>
+                {/* Filter Bar - Matching SelectDoctor style */}
+                <div className="filter-bar" style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: 'white',
+                  padding: '1.25rem 1.5rem',
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
+                  margin: '0 0.5% 2rem 0.5%',
+                  gap: '1rem'
+                }}>
+                  <div className="filter-left">
+                    <label>Find By Speciality:</label>
+                    <select
+                      value={booking.specialty || ''}
+                      onChange={e => setBooking(prev => ({ ...prev, specialty: e.target.value }))}
+                    >
+                      <option value="">All Specializations</option>
+                      {[...new Set(filteredDoctors.map(d => d.specialty).filter(Boolean))].map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="filter-right">
+                    <div className="search-box">
+                      <svg className="search-icon-left" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                      </svg>
+                      <input
+                        type="text"
+                        placeholder="Search by name..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Doctor List - Matching SelectDoctor style */}
+                <div className="doctor-list" style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1.25rem',
+                  padding: '0 0.5% 3rem 0.5%'
+                }}>
+                  {loading ? (
+                    <div className="loading-state">Loading doctors...</div>
+                  ) : (() => {
+                    const displayed = filteredDoctors.filter(doc =>
+                      (!booking.specialty || doc.specialty === booking.specialty) &&
+                      (!searchTerm || doc.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                    );
+                    
+                    if (displayed.length === 0) {
+                      return (
+                        <div className="empty-state">
+                          <p>No doctors found for this department.</p>
+                        </div>
+                      );
+                    }
+
+                    return displayed.map(doc => {
+                      const photoPath = doc.profilePhoto?.replace(/\\/g, '/').replace(/^backend\//, '');
+                      const dates = getNextDates(doc);
+                      const nextAvailable = getNextAvailableTime(doc);
+
+                      return (
+                        <div key={doc.id} className="doctor-row" style={{
+                          background: 'white',
+                          borderRadius: '16px',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+                          display: 'flex',
+                          overflow: 'hidden',
+                          border: 'none',
+                          padding: '1.5rem',
+                          gap: '1.5rem',
+                          marginBottom: '1.5rem'
+                        }}>
+                          {/* Left: Doctor Info (Photo + Details side by side) */}
+                          <div className="doctor-info-col" style={{
+                            display: 'flex',
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: '1.25rem',
+                            minWidth: '380px',
+                            flexShrink: 0
+                          }}>
+                            <div className="doctor-photo" style={{
+                              width: '180px',
+                              height: '180px',
+                              borderRadius: '16px',
+                              overflow: 'hidden',
+                              flexShrink: 0,
+                              background: 'var(--primary-color)',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => {
+                              setSelectedDoctorProfile(doc);
+                              setShowProfileModal(true);
+                            }}
+                            >
+                              {photoPath ? (
+                                <img
+                                  src={`http://localhost:5001/${photoPath}`}
+                                  alt={doc.name}
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                    objectPosition: 'center top'
+                                  }}
+                                  onError={e => {
+                                    e.target.style.display = 'none';
+                                    e.target.nextSibling.style.display = 'flex';
+                                  }}
+                                />
+                              ) : null}
+                              <div className="photo-fallback" style={{ 
+                                display: photoPath ? 'none' : 'flex',
+                                width: '100%',
+                                height: '100%',
+                                background: 'linear-gradient(135deg, #00c9b1, #0284c7)',
+                                color: 'white',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '5rem',
+                                fontWeight: 700
+                              }}>
+                                {doc.name.split(' ')[1]?.[0] || 'D'}
+                              </div>
+                            </div>
+
+                            <div className="doctor-details" style={{
+                              flex: 1,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'center',
+                              paddingTop: 0
+                            }}>
+                              <h3 style={{
+                                fontSize: '1.2rem',
+                                fontWeight: 700,
+                                color: '#1a2e35',
+                                marginBottom: '0.75rem'
+                              }}>{doc.name}</h3>
+                              <p className="spec-tag" style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                fontSize: '0.85rem',
+                                color: '#64748b',
+                                marginBottom: '0.4rem'
+                              }}>
+                                <span className="dot" style={{
+                                  width: '6px',
+                                  height: '6px',
+                                  borderRadius: '50%',
+                                  background: 'var(--primary-color)',
+                                  flexShrink: 0
+                                }}></span>{doc.specialty}
+                              </p>
+                              <p className="exp-tag" style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                fontSize: '0.85rem',
+                                color: '#64748b',
+                                marginBottom: '0.4rem'
+                              }}>
+                                <span className="dot" style={{
+                                  width: '6px',
+                                  height: '6px',
+                                  borderRadius: '50%',
+                                  background: 'var(--primary-color)',
+                                  flexShrink: 0
+                                }}></span>Experience: {doc.experience}
+                              </p>
+                              <p className="next-available-tag" style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                fontSize: '0.82rem',
+                                color: '#10b981',
+                                fontWeight: 500,
+                                marginBottom: '0.75rem'
+                              }}>
+                                <span className="dot green" style={{
+                                  width: '6px',
+                                  height: '6px',
+                                  borderRadius: '50%',
+                                  background: '#10b981',
+                                  flexShrink: 0
+                                }}></span>
+                                Next Available: {nextAvailable || 'Contact clinic directly'}
+                              </p>
+                              <button className="view-profile-btn" style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '0 1.5rem',
+                                border: '2px solid var(--primary-color)',
+                                borderRadius: '8px',
+                                color: 'var(--primary-color)',
+                                fontSize: '0.85rem',
+                                fontWeight: 600,
+                                background: 'white',
+                                alignSelf: 'flex-start',
+                                height: '36px',
+                                lineHeight: 1,
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => {
+                                setSelectedDoctorProfile(doc);
+                                setShowProfileModal(true);
+                              }}
+                              >
+                                View Profile ›
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Right: Schedule */}
+                          <div className="doctor-schedule-col" style={{
+                            flex: 1,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 0,
+                            background: 'transparent',
+                            borderRadius: 0,
+                            padding: 0,
+                            boxShadow: 'none'
+                          }}>{dates.length === 0 ? (
+                              <div className="no-schedule" style={{
+                                color: 'var(--text-light)',
+                                fontSize: '0.9rem',
+                                padding: '1rem 0'
+                              }}>No availability set. Contact clinic directly.</div>
+                            ) : (
+                              <>
+                                <div className="schedule-header" style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: '80px 200px 1fr',
+                                  gap: '1.5rem',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  color: '#94a3b8',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px',
+                                  paddingBottom: '0.4rem',
+                                  borderBottom: '1px solid #e2e8f0',
+                                  marginBottom: '0.2rem'
+                                }}>
+                                  <span>Date</span>
+                                  <span>Dr. Available Time</span>
+                                  <span>Available Slots</span>
+                                </div>
+                                {dates.map((date, di) => {
+                                  const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][date.getDay()];
+                                  let timeRange = `${doc.availableTimeStart || '09:00'} - ${doc.availableTimeEnd || '17:00'}`;
+                                  
+                                  // Convert 24h time to 12h format with AM/PM
+                                  const formatTime12h = (time24) => {
+                                    const [hours, minutes] = time24.split(':').map(Number);
+                                    const period = hours >= 12 ? 'PM' : 'AM';
+                                    const hours12 = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
+                                    return `${String(hours12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${period}`;
+                                  };
+                                  
+                                  // Get schedule from hospitalSchedules or flat schedule
+                                  let daySchedule = null;
+                                  if (doc.hospitalSchedules && doc.hospitalSchedules.length > 0) {
+                                    const hospitalSchedule = doc.hospitalSchedules[0];
+                                    if (hospitalSchedule.schedule) {
+                                      daySchedule = hospitalSchedule.schedule.find(s => s.day === dayName && s.active);
+                                    }
+                                  }
+                                  if (!daySchedule && doc.schedule) {
+                                    daySchedule = doc.schedule.find(s => s.day === dayName && s.active);
+                                  }
+                                  if (daySchedule) {
+                                    timeRange = `${formatTime12h(daySchedule.start)} - ${formatTime12h(daySchedule.end)}`;
+                                  } else {
+                                    const [start, end] = timeRange.split(' - ');
+                                    timeRange = `${formatTime12h(start)} - ${formatTime12h(end)}`;
+                                  }
+                                  
+                                  const slots = getTimeSlots(doc, date);
+                                  const displaySlots = slots.slice(0, 4);
+                                  const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+                                  return (
+                                    <div key={di} className="schedule-row" style={{
+                                      display: 'grid',
+                                      gridTemplateColumns: '80px 200px 1fr',
+                                      gap: '1.5rem',
+                                      alignItems: 'center',
+                                      padding: '0.4rem 0',
+                                      borderBottom: di < dates.length - 1 ? '1px solid #f1f5f9' : 'none'
+                                    }}>
+                                      <span className="sched-date" style={{
+                                        fontSize: '0.85rem',
+                                        color: '#1e293b',
+                                        fontWeight: 700
+                                      }}>{dateStr}</span>
+                                      
+                                      <span className="sched-range" style={{
+                                        fontSize: '0.8rem',
+                                        color: '#64748b',
+                                        fontWeight: 400
+                                      }}>{timeRange}</span>
+                                      
+                                      <div className="sched-slots" style={{
+                                        display: 'flex',
+                                        gap: '0.4rem',
+                                        flexWrap: 'wrap',
+                                        alignItems: 'center'
+                                      }}>
+                                        {displaySlots.map(slot => (
+                                          <button
+                                            key={slot}
+                                            className="slot-btn"
+                                            onClick={() => handleBookSlot(doc, date, slot)}
+                                            style={{
+                                              padding: '0 0.9rem',
+                                              background: 'var(--primary-color)',
+                                              color: 'white',
+                                              border: 'none',
+                                              borderRadius: '8px',
+                                              fontSize: '0.8rem',
+                                              fontWeight: 600,
+                                              cursor: 'pointer',
+                                              boxShadow: '0 2px 4px rgba(0, 168, 150, 0.2)',
+                                              height: '32px',
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              lineHeight: 1
+                                            }}
+                                          >
+                                            {formatTime12h(slot)}
+                                          </button>
+                                        ))}
+                                        {slots.length > 4 && (
+                                          <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '0.25rem' }}>
+                                            +{slots.length - 4} more
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                                <button
+                                  className="check-schedule-btn"
+                                  onClick={() => {
+                                    const photoPath = doc.profilePhoto?.replace(/\\/g, '/').replace(/^backend\//, '');
+                                    setBooking(prev => ({
+                                      ...prev,
+                                      doctor: {
+                                        id: doc.id,
+                                        _id: doc.id,
+                                        name: doc.name,
+                                        specialty: doc.specialty,
+                                        specialtyId: doc.specialtyId,
+                                        rating: doc.rating,
+                                        patients: doc.patients,
+                                        experience: doc.experience,
+                                        fee: doc.fee,
+                                        hospital: doc.hospital,
+                                        currentHospital: doc.currentHospital || doc.hospital,
+                                        profilePhoto: photoPath,
+                                        schedule: doc.schedule,
+                                        hospitalSchedules: doc.hospitalSchedules,
+                                        lunchBreak: doc.lunchBreak,
+                                        leaves: doc.leaves,
+                                        availableDays: doc.availableDays,
+                                        availableTimeStart: doc.availableTimeStart,
+                                        availableTimeEnd: doc.availableTimeEnd,
+                                        consultationDuration: doc.consultationDuration,
+                                        nmcNumber: doc.nmcNumber,
+                                        qualification: doc.qualification,
+                                      }
+                                    }));
+                                    setStep(3);
+                                  }}
+                                  style={{
+                                    marginTop: '0.2rem',
+                                    padding: '0.5rem 1.5rem',
+                                    background: 'var(--primary-color)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    textAlign: 'center',
+                                    width: '100%'
+                                  }}
+                                >
+                                  Check Other Schedule Time to take appointment →
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </>
+            )}
+
+            {/* Step 2 (General Flow) or Step 3 (Hospital Flow): Select Date & Time - Side by Side Layout */}
+            {((step === 2 && !hospitalFilter) || (step === 3 && hospitalFilter)) && (
               <>
                 {/* Header */}
                 <div className="booking-page-header">
@@ -1649,8 +2315,8 @@ const BookAppointment = () => {
                   </div>
                 </div>
 
-                {/* Action Buttons - Hide for Step 2 */}
-                {step !== 2 && (
+                {/* Action Buttons - Hide for the date/time step (slot click advances automatically) */}
+                {!((step === 2 && !hospitalFilter) || (step === 3 && hospitalFilter)) && (
                   <div className="booking-actions">
                     {step > (preSelectedDoctor ? 2 : 1) && (
                       <button
@@ -1660,7 +2326,7 @@ const BookAppointment = () => {
                         Go Back
                       </button>
                     )}
-                    {step < 4 ? (
+                    {step < (hospitalFilter ? 3 : 2) ? (
                       <button
                         className="action-btn primary-btn"
                         disabled={!canProceed()}
@@ -1783,43 +2449,71 @@ const BookAppointment = () => {
                       </div>
 
                       {/* Self Card */}
-                      {patientInfo ? (
-                        <div 
-                          className={`step4-dependent-card ${selectedDependent === 'self' ? 'selected' : ''}`}
-                          onClick={() => setSelectedDependent('self')}
-                        >
-                          <div className="step4-dependent-avatar">
-                            {patientInfo.firstName?.[0] || 'P'}
+                      <div className="step4-dependents-grid">
+                        {patientInfo ? (
+                          <div 
+                            className={`step4-dependent-card ${selectedDependent === 'self' ? 'selected' : ''}`}
+                            onClick={() => setSelectedDependent('self')}
+                          >
+                            <div className="step4-dependent-avatar">
+                              {patientInfo.firstName?.[0] || 'P'}
+                            </div>
+                            <div className="step4-dependent-info">
+                              <h4>{patientInfo.firstName} {patientInfo.lastName}</h4>
+                              <p>{patientInfo.dateOfBirth ? new Date(patientInfo.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
+                              <span className="step4-self-badge">Self</span>
+                            </div>
                           </div>
-                          <div className="step4-dependent-info">
-                            <h4>{patientInfo.firstName} {patientInfo.lastName}</h4>
-                            <p>{patientInfo.dateOfBirth ? new Date(patientInfo.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
-                            <span className="step4-self-badge">Self</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div 
-                          className={`step4-dependent-card ${selectedDependent === 'self' ? 'selected' : ''}`}
-                          onClick={() => setSelectedDependent('self')}
-                        >
-                          <div className="step4-dependent-avatar">
-                            {(() => {
-                              const userData = JSON.parse(localStorage.getItem('user') || '{}');
-                              return userData.firstName?.[0] || 'P';
-                            })()}
-                          </div>
-                          <div className="step4-dependent-info">
-                            <h4>
+                        ) : (
+                          <div 
+                            className={`step4-dependent-card ${selectedDependent === 'self' ? 'selected' : ''}`}
+                            onClick={() => setSelectedDependent('self')}
+                          >
+                            <div className="step4-dependent-avatar">
                               {(() => {
                                 const userData = JSON.parse(localStorage.getItem('user') || '{}');
-                                return `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'Patient';
+                                return userData.firstName?.[0] || 'P';
                               })()}
-                            </h4>
-                            <p>Loading...</p>
-                            <span className="step4-self-badge">Self</span>
+                            </div>
+                            <div className="step4-dependent-info">
+                              <h4>
+                                {(() => {
+                                  const userData = JSON.parse(localStorage.getItem('user') || '{}');
+                                  return `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'Patient';
+                                })()}
+                              </h4>
+                              <p>Loading...</p>
+                              <span className="step4-self-badge">Self</span>
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+
+                        {/* Dependents List */}
+                        {dependents
+                          .filter(dep => {
+                            if (!dependentSearch) return true;
+                            const searchLower = dependentSearch.toLowerCase();
+                            const fullName = `${dep.firstName} ${dep.lastName}`.toLowerCase();
+                            return fullName.includes(searchLower);
+                          })
+                          .map((dependent) => (
+                            <div 
+                              key={dependent._id}
+                              className={`step4-dependent-card ${selectedDependent === dependent._id ? 'selected' : ''}`}
+                              onClick={() => setSelectedDependent(dependent._id)}
+                            >
+                              <div className="step4-dependent-avatar">
+                                {dependent.firstName?.[0] || 'D'}
+                              </div>
+                              <div className="step4-dependent-info">
+                                <h4>{dependent.firstName} {dependent.lastName}</h4>
+                                <p>{dependent.dobAD || (dependent.age ? `Age: ${dependent.age}` : 'N/A')}</p>
+                                <span className="step4-relationship-badge">{dependent.relationship}</span>
+                              </div>
+                            </div>
+                          ))
+                        }
+                      </div>
 
                       {/* Add New Dependent Button */}
                       <button 
@@ -1849,125 +2543,308 @@ const BookAppointment = () => {
 
             {/* Step 5: Confirmation */}
             {step === 5 && (
-              <div className="confirmation-card">
-                <div className="confirmation-icon">✓</div>
-                <h2>Confirm Your Appointment</h2>
-                <p>Please review your booking details and select payment method</p>
-                
-                <div className="confirmation-details">
-                  <div className="detail-row">
-                    <span className="label">Doctor</span>
-                    <span className="value">{booking.doctor?.name}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Specialty</span>
-                    <span className="value">{booking.doctor?.specialty}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Date</span>
-                    <span className="value">{booking.date?.day}, {booking.date?.date} {booking.date?.month}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Appointment Time</span>
-                    <span className="value">
-                      {selectedSlot ? (() => {
-                        const [hours, minutes] = selectedSlot.split(':');
-                        const hour = parseInt(hours);
-                        const ampm = hour >= 12 ? 'PM' : 'AM';
-                        const hour12 = hour % 12 || 12;
-                        return `${hour12}:${minutes} ${ampm}`;
-                      })() : 'Not selected'}
-                    </span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Token Number</span>
-                    <span className="value">#{booking.tokenNumber}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Working Hours</span>
-                    <span className="value">{booking.workingHours}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="label">Consultation Fee</span>
-                    <span className="value">Rs. {booking.doctor?.fee}</span>
-                  </div>
+              <div className="step5-container">
+                <div className="step5-header">
+                  <div className="step5-icon">✓</div>
+                  <h2>Confirm Your Appointment</h2>
+                  <p>Please review your booking details before proceeding to payment</p>
                 </div>
 
-                {/* Payment Method Selection */}
-                <div className="payment-section">
-                  <h3>Select Payment Method</h3>
-                  <div className="payment-methods">
-                    <div 
-                      className={`payment-option ${booking.paymentMethod === 'esewa' ? 'selected' : ''}`}
-                      onClick={() => setBooking(prev => ({ ...prev, paymentMethod: 'esewa' }))}
-                    >
-                      <div className="payment-logo">
-                        <div className="esewa-logo">eSewa</div>
-                      </div>
-                      <div className="payment-info">
-                        <h4>eSewa</h4>
-                        <p>Pay securely with eSewa digital wallet</p>
-                      </div>
-                      <div className="payment-radio">
-                        <div className={`radio ${booking.paymentMethod === 'esewa' ? 'checked' : ''}`}></div>
-                      </div>
-                    </div>
-                    
-                    <div className="payment-option disabled">
-                      <div className="payment-logo">
-                        <div className="khalti-logo">Khalti</div>
-                      </div>
-                      <div className="payment-info">
-                        <h4>Khalti</h4>
-                        <p>Coming soon</p>
-                      </div>
-                      <div className="payment-radio">
-                        <div className="radio disabled"></div>
+                <div className="step5-content">
+                  {/* Left Column - Doctor & Appointment Details */}
+                  <div className="step5-left">
+                    {/* Doctor Card */}
+                    <div className="step5-card">
+                      <h3 className="step5-card-title">Doctor Information</h3>
+                      <div className="step5-doctor-info">
+                        <div className="step5-doctor-avatar">
+                          {booking.doctor?.name?.charAt(0) || 'D'}
+                        </div>
+                        <div className="step5-doctor-details">
+                          <h4>{booking.doctor?.name}</h4>
+                          <p>{booking.doctor?.specialty}</p>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="payment-option disabled">
-                      <div className="payment-logo">
-                        <div className="card-logo">💳</div>
+                    {/* Appointment Details Card */}
+                    <div className="step5-card">
+                      <h3 className="step5-card-title">Appointment Details</h3>
+                      <div className="step5-info-grid">
+                        <div className="step5-info-item">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                          </svg>
+                          <div>
+                            <label>Date</label>
+                            <span>{booking.date?.day}, {booking.date?.date} {booking.date?.month}</span>
+                          </div>
+                        </div>
+                        <div className="step5-info-item">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                          </svg>
+                          <div>
+                            <label>Time</label>
+                            <span>
+                              {selectedSlot ? (() => {
+                                const [hours, minutes] = selectedSlot.split(':');
+                                const hour = parseInt(hours);
+                                const ampm = hour >= 12 ? 'PM' : 'AM';
+                                const hour12 = hour % 12 || 12;
+                                return `${hour12}:${minutes} ${ampm}`;
+                              })() : 'Not selected'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="step5-info-item">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10 9 9 9 8 9"/>
+                          </svg>
+                          <div>
+                            <label>Token Number</label>
+                            <span>#{booking.tokenNumber}</span>
+                          </div>
+                        </div>
+                        <div className="step5-info-item">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                          </svg>
+                          <div>
+                            <label>Working Hours</label>
+                            <span>{booking.workingHours}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="payment-info">
-                        <h4>Credit/Debit Card</h4>
-                        <p>Coming soon</p>
-                      </div>
-                      <div className="payment-radio">
-                        <div className="radio disabled"></div>
+                    </div>
+
+                    {/* Patient Details Card */}
+                    <div className="step5-card">
+                      <h3 className="step5-card-title">Patient Details</h3>
+                      <div className="step5-info-grid">
+                        {selectedDependent === 'self' ? (
+                          <>
+                            <div className="step5-info-item">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                              </svg>
+                              <div>
+                                <label>Full Name</label>
+                                <span>{patientInfo ? `${patientInfo.firstName} ${patientInfo.lastName}` : 'Loading...'}</span>
+                              </div>
+                            </div>
+                            <div className="step5-info-item">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                              </svg>
+                              <div>
+                                <label>Age</label>
+                                <span>
+                                  {patientInfo?.dateOfBirth 
+                                    ? Math.floor((new Date() - new Date(patientInfo.dateOfBirth)) / (365.25 * 24 * 60 * 60 * 1000))
+                                    : 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="step5-info-item">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                              </svg>
+                              <div>
+                                <label>Date of Birth</label>
+                                <span>
+                                  {patientInfo?.dateOfBirth 
+                                    ? new Date(patientInfo.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                                    : 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="step5-info-item">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                              </svg>
+                              <div>
+                                <label>Gender</label>
+                                <span>{patientInfo?.gender ? patientInfo.gender.charAt(0).toUpperCase() + patientInfo.gender.slice(1) : 'N/A'}</span>
+                              </div>
+                            </div>
+                            <div className="step5-info-item">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                              </svg>
+                              <div>
+                                <label>Mobile No</label>
+                                <span>{patientInfo?.phone || 'N/A'}</span>
+                              </div>
+                            </div>
+                            <div className="step5-info-item">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                <circle cx="12" cy="10" r="3"/>
+                              </svg>
+                              <div>
+                                <label>Address</label>
+                                <span>
+                                  {patientInfo?.address 
+                                    ? `${patientInfo.address.street || ''}, ${patientInfo.address.city || ''}, ${patientInfo.address.district || ''}, ${patientInfo.address.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',')
+                                    : 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {(() => {
+                              const dependent = dependents.find(dep => dep._id === selectedDependent);
+                              if (!dependent) return null;
+                              return (
+                                <>
+                                  <div className="step5-info-item">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                      <circle cx="12" cy="7" r="4"/>
+                                    </svg>
+                                    <div>
+                                      <label>Full Name</label>
+                                      <span>{`${dependent.firstName} ${dependent.lastName}`}</span>
+                                    </div>
+                                  </div>
+                                  <div className="step5-info-item">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                      <line x1="16" y1="2" x2="16" y2="6"/>
+                                      <line x1="8" y1="2" x2="8" y2="6"/>
+                                      <line x1="3" y1="10" x2="21" y2="10"/>
+                                    </svg>
+                                    <div>
+                                      <label>Age</label>
+                                      <span>{dependent.age || 'N/A'}</span>
+                                    </div>
+                                  </div>
+                                  <div className="step5-info-item">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                      <line x1="16" y1="2" x2="16" y2="6"/>
+                                      <line x1="8" y1="2" x2="8" y2="6"/>
+                                      <line x1="3" y1="10" x2="21" y2="10"/>
+                                    </svg>
+                                    <div>
+                                      <label>Date of Birth</label>
+                                      <span>{dependent.dobAD || 'N/A'}</span>
+                                    </div>
+                                  </div>
+                                  <div className="step5-info-item">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                      <circle cx="12" cy="7" r="4"/>
+                                    </svg>
+                                    <div>
+                                      <label>Gender</label>
+                                      <span>{dependent.gender || 'N/A'}</span>
+                                    </div>
+                                  </div>
+                                  <div className="step5-info-item">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                    </svg>
+                                    <div>
+                                      <label>Mobile No</label>
+                                      <span>{dependent.phone || 'N/A'}</span>
+                                    </div>
+                                  </div>
+                                  <div className="step5-info-item">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                      <circle cx="12" cy="10" r="3"/>
+                                    </svg>
+                                    <div>
+                                      <label>Address</label>
+                                      <span>
+                                        {dependent.address 
+                                          ? dependent.address
+                                          : `${dependent.palika || ''}, ${dependent.district || ''}, ${dependent.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',') || 'N/A'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Payment Summary */}
-                <div className="payment-summary">
-                  <div className="summary-row">
-                    <span>Consultation Fee</span>
-                    <span>Rs. {booking.doctor?.fee}</span>
-                  </div>
-                  <div className="summary-row">
-                    <span>Service Charge</span>
-                    <span>Rs. 0</span>
-                  </div>
-                  <div className="summary-row total">
-                    <span>Total Amount</span>
-                    <span>Rs. {booking.doctor?.fee}</span>
-                  </div>
-                </div>
+                  {/* Right Column - Payment */}
+                  <div className="step5-right">
+                    {/* Payment Summary Card */}
+                    <div className="step5-card step5-payment-card">
+                      <h3 className="step5-card-title">Payment Summary</h3>
+                      <div className="step5-payment-details">
+                        <div className="step5-payment-row">
+                          <span>Consultation Fee</span>
+                          <span>Rs. {booking.doctor?.fee}</span>
+                        </div>
+                        <div className="step5-payment-row">
+                          <span>Service Charge</span>
+                          <span>Rs. 0</span>
+                        </div>
+                        <div className="step5-payment-divider"></div>
+                        <div className="step5-payment-row step5-payment-total">
+                          <span>Total Amount</span>
+                          <span>Rs. {booking.doctor?.fee}</span>
+                        </div>
+                      </div>
 
-                {/* Action Buttons */}
-                <div className="booking-actions">
-                  <button
-                    className="action-btn secondary-btn"
-                    onClick={() => setStep(step - 1)}
-                  >
-                    Go Back
-                  </button>
-                  <button className="action-btn primary-btn" onClick={handleBooking}>
-                    Pay Rs. {booking.doctor?.fee || 0} & Confirm
-                  </button>
+                      {/* Payment Method */}
+                      <div className="step5-payment-method">
+                        <h4>Payment Method</h4>
+                        <div className="step5-khalti-option">
+                          <img
+                            src="https://web.khalti.com/static/img/logo1.png"
+                            alt="Khalti"
+                            onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                          />
+                          <div className="step5-khalti-fallback" style={{ display: 'none' }}>Khalti</div>
+                          <div className="step5-radio-checked">✓</div>
+                        </div>
+                        <p className="step5-payment-note">Pay securely with Khalti digital wallet</p>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="step5-actions">
+                        <button
+                          className="step5-btn step5-btn-back"
+                          onClick={() => setStep(step - 1)}
+                        >
+                          ← Go Back
+                        </button>
+                        <button 
+                          className="step5-btn step5-btn-pay" 
+                          onClick={handleBooking}
+                        >
+                          Pay Rs. {booking.doctor?.fee || 0}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -2014,20 +2891,6 @@ const BookAppointment = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Age Type</label>
-                  <select
-                    value={newDependent.ageType}
-                    onChange={(e) => setNewDependent({...newDependent, ageType: e.target.value})}
-                  >
-                    <option value="Year">Year</option>
-                    <option value="Month">Month</option>
-                    <option value="Day">Day</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
                   <label>Date of Birth (AD)</label>
                   <input
                     type="text"
@@ -2036,6 +2899,9 @@ const BookAppointment = () => {
                     onChange={(e) => setNewDependent({...newDependent, dobAD: e.target.value})}
                   />
                 </div>
+              </div>
+
+              <div className="form-row">
                 <div className="form-group">
                   <label>Date of Birth (BS)</label>
                   <input
@@ -2045,20 +2911,6 @@ const BookAppointment = () => {
                     onChange={(e) => setNewDependent({...newDependent, dobBS: e.target.value})}
                   />
                 </div>
-              </div>
-
-              <div className="form-group checkbox-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={newDependent.isRealDOB}
-                    onChange={(e) => setNewDependent({...newDependent, isRealDOB: e.target.checked})}
-                  />
-                  Is real DOB?
-                </label>
-              </div>
-
-              <div className="form-row">
                 <div className="form-group">
                   <label>Phone Number</label>
                   <input
@@ -2068,6 +2920,9 @@ const BookAppointment = () => {
                     onChange={(e) => setNewDependent({...newDependent, phone: e.target.value})}
                   />
                 </div>
+              </div>
+
+              <div className="form-row">
                 <div className="form-group">
                   <label>Email</label>
                   <input
@@ -2077,9 +2932,6 @@ const BookAppointment = () => {
                     onChange={(e) => setNewDependent({...newDependent, email: e.target.value})}
                   />
                 </div>
-              </div>
-
-              <div className="form-row">
                 <div className="form-group">
                   <label>Gender <span className="required">*</span></label>
                   <select
@@ -2092,6 +2944,9 @@ const BookAppointment = () => {
                     <option value="Other">Other</option>
                   </select>
                 </div>
+              </div>
+
+              <div className="form-row">
                 <div className="form-group">
                   <label>Relationship <span className="required">*</span></label>
                   <select
@@ -2106,44 +2961,48 @@ const BookAppointment = () => {
                     <option value="Other">Other</option>
                   </select>
                 </div>
+                <div className="form-group">
+                  <label>Province <span className="required">*</span></label>
+                  <select
+                    value={newDependent.province}
+                    onChange={(e) => setNewDependent({...newDependent, province: e.target.value, district: '', palika: ''})}
+                  >
+                    <option value="">Select Province</option>
+                    {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Select District <span className="required">*</span></label>
+                  <label>District <span className="required">*</span></label>
                   <select
                     value={newDependent.district}
-                    onChange={(e) => setNewDependent({...newDependent, district: e.target.value})}
+                    onChange={(e) => setNewDependent({...newDependent, district: e.target.value, palika: ''})}
+                    disabled={!newDependent.province}
                   >
-                    <option value="">Select</option>
-                    <option value="Kathmandu">Kathmandu</option>
-                    <option value="Lalitpur">Lalitpur</option>
-                    <option value="Bhaktapur">Bhaktapur</option>
+                    <option value="">{newDependent.province ? 'Select District' : 'Select Province First'}</option>
+                    {newDependent.province && Object.keys(NEPAL_DATA[newDependent.province] || {}).map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Select VDC/Municipality <span className="required">*</span></label>
+                  <label>Local Level (Palika) <span className="required">*</span></label>
                   <select
-                    value={newDependent.vdcMunicipality}
-                    onChange={(e) => setNewDependent({...newDependent, vdcMunicipality: e.target.value})}
+                    value={newDependent.palika}
+                    onChange={(e) => setNewDependent({...newDependent, palika: e.target.value})}
+                    disabled={!newDependent.district}
                   >
-                    <option value="">Select</option>
-                    <option value="Municipality 1">Municipality 1</option>
-                    <option value="Municipality 2">Municipality 2</option>
+                    <option value="">{newDependent.district ? 'Select Palika' : 'Select District First'}</option>
+                    {(NEPAL_DATA[newDependent.province]?.[newDependent.district] || []).map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
                   </select>
                 </div>
               </div>
 
               <div className="form-row">
-                <div className="form-group">
-                  <label>Ward</label>
-                  <input
-                    type="text"
-                    placeholder="Enter Ward"
-                    value={newDependent.ward}
-                    onChange={(e) => setNewDependent({...newDependent, ward: e.target.value})}
-                  />
-                </div>
                 <div className="form-group">
                   <label>Address</label>
                   <input
@@ -2166,16 +3025,144 @@ const BookAppointment = () => {
                 <button 
                   type="button" 
                   className="btn-add-dependent"
-                  onClick={() => {
-                    // Handle add dependent logic here
-                    console.log('Adding dependent:', newDependent);
-                    setShowAddDependentModal(false);
+                  onClick={async () => {
+                    try {
+                      // Get user data from localStorage
+                      const userData = JSON.parse(localStorage.getItem('user') || '{}');
+                      const userId = userData.id;
+                      
+                      if (!userId) {
+                        alert('User not found. Please log in again.');
+                        return;
+                      }
+
+                      // Validate required fields
+                      if (!newDependent.firstName || !newDependent.lastName || !newDependent.gender || 
+                          !newDependent.relationship || !newDependent.province || !newDependent.district || 
+                          !newDependent.palika) {
+                        alert('Please fill in all required fields');
+                        return;
+                      }
+
+                      // Save dependent to backend
+                      const response = await fetch(`http://localhost:5001/api/patient/dependents/${userId}`, {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(newDependent)
+                      });
+
+                      const data = await response.json();
+
+                      if (data.success) {
+                        // Add the new dependent to the local state
+                        setDependents(prev => [...prev, data.dependent]);
+                        
+                        // Reset form
+                        setNewDependent({
+                          firstName: '',
+                          lastName: '',
+                          age: '',
+                          dobAD: '',
+                          dobBS: '',
+                          phone: '',
+                          email: '',
+                          gender: '',
+                          relationship: '',
+                          province: '',
+                          district: '',
+                          palika: '',
+                          address: ''
+                        });
+                        
+                        // Close modal
+                        setShowAddDependentModal(false);
+                        
+                        alert('Dependent added successfully!');
+                      } else {
+                        alert('Failed to add dependent: ' + (data.error || 'Unknown error'));
+                      }
+                    } catch (error) {
+                      console.error('Error adding dependent:', error);
+                      alert('Failed to add dependent. Please try again.');
+                    }
                   }}
                 >
                   Add Dependent
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Doctor Profile Modal - EXACT COPY from SelectDoctor */}
+      {showProfileModal && selectedDoctorProfile && (
+        <div className="doctor-modal-overlay" onClick={() => setShowProfileModal(false)}>
+          <div className="doctor-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setShowProfileModal(false)}>×</button>
+
+            <div className="modal-header">
+              <div className="modal-doctor-photo">
+                {selectedDoctorProfile.profilePhoto ? (
+                  <img 
+                    src={`http://localhost:5001/${selectedDoctorProfile.profilePhoto.replace(/\\/g, '/').replace(/^backend\//, '')}`} 
+                    alt={selectedDoctorProfile.name}
+                    onError={(e) => { 
+                      e.target.style.display = 'none'; 
+                      e.target.nextSibling.style.display = 'flex'; 
+                    }}
+                  />
+                ) : null}
+                <div className="modal-photo-fallback" style={{ display: selectedDoctorProfile.profilePhoto ? 'none' : 'flex' }}>
+                  {selectedDoctorProfile.name?.split(' ')[1]?.[0] || selectedDoctorProfile.name?.[0] || 'D'}
+                </div>
+              </div>
+              <div className="modal-doctor-info">
+                <h3>{selectedDoctorProfile.name}</h3>
+                <p className="modal-specialty">{selectedDoctorProfile.specialty}</p>
+              </div>
+            </div>
+
+            <div className="modal-body">
+              <div className="modal-info-row">
+                <span className="info-label">NMC Number:</span>
+                <span className="info-value">{selectedDoctorProfile.nmcNumber || 'N/A'}</span>
+              </div>
+              
+              <div className="modal-info-row">
+                <span className="info-label">Qualification:</span>
+                <span className="info-value">{selectedDoctorProfile.qualification || 'Not specified'}</span>
+              </div>
+              
+              <div className="modal-info-row">
+                <span className="info-label">Experience:</span>
+                <span className="info-value">{selectedDoctorProfile.experience || 'Not specified'}</span>
+              </div>
+              
+              <div className="modal-info-row">
+                <span className="info-label">Currently Practice at:</span>
+                <span className="info-value">
+                  {Array.isArray(selectedDoctorProfile.hospital) 
+                    ? selectedDoctorProfile.hospital[0] 
+                    : selectedDoctorProfile.hospital || 
+                      (Array.isArray(selectedDoctorProfile.currentHospital) 
+                        ? selectedDoctorProfile.currentHospital[0] 
+                        : selectedDoctorProfile.currentHospital) || 'Not specified'}
+                </span>
+              </div>
+              
+              <div className="modal-info-row highlight">
+                <span className="info-label">Consultation Fee:</span>
+                <span className="info-value fee">Rs. {selectedDoctorProfile.fee || selectedDoctorProfile.consultationFee || 'Contact clinic'}</span>
+              </div>
+              
+              <div className="modal-info-row highlight">
+                <span className="info-label">Next Available Time:</span>
+                <span className="info-value available">{getNextAvailableTime(selectedDoctorProfile) || 'Contact clinic'}</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
