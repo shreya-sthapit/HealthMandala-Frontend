@@ -295,7 +295,7 @@ const AuthPage = () => {
         </div>
 
         {/* ── Sign Up form panel ── */}
-        <div className="ap-form-panel ap-signup-panel">
+        <div className="ap-form-panel ap-signup-panel" style={{ paddingTop: '120px' }}>
           <h2>Create Account</h2>
 
           <div className="ap-method-toggle">
