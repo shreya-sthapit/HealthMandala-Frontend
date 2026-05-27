@@ -101,7 +101,7 @@ const NIDRegistration = () => {
     
     setTimeout(() => {
       setIsSubmitting(false);
-      navigate('/account-pending');
+      navigate('/');
     }, 1500);
   };
 

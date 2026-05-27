@@ -6,6 +6,7 @@ const Footer = () => {
 
   if (pathname.startsWith('/admin')) return null;
   if (pathname.startsWith('/hospital-dashboard')) return null;
+  if (pathname.startsWith('/receptionist-dashboard')) return null;
 
   return (
     <footer className="global-footer">
@@ -28,7 +29,7 @@ const Footer = () => {
           <ul>
             <li><Link to="/partner">Partner With Us</Link></li>
             <li><Link to="/hospital/login">Hospital Login</Link></li>
-            <li><Link to="/doctor-auth">Doctor Login</Link></li>
+            <li><Link to="/doctor-auth">Staff Login</Link></li>
           </ul>
         </div>
         <div className="gf-section">

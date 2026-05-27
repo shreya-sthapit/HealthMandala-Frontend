@@ -80,7 +80,11 @@ export default function HDAppointments({ userId, hospital, API, defaultView = 'a
     w.document.write(`<html><head><title>Token #${apt.tokenNumber}</title><style>body{font-family:sans-serif;text-align:center;padding:2rem}.token{font-size:4rem;font-weight:900;color:#00a896;border:4px solid #00a896;border-radius:50%;width:120px;height:120px;display:flex;align-items:center;justify-content:center;margin:1rem auto}h2{color:#1a202c}p{color:#718096;margin:0.3rem 0}</style></head><body><h2>${hospital?.hospitalName || 'Hospital'}</h2><div class="token">${apt.tokenNumber}</div><h3>${apt.patientName}</h3><p>Doctor: ${apt.doctorName}</p><p>Date: ${new Date(apt.appointmentDate).toLocaleDateString()}</p><p>Time: ${apt.appointmentTime || 'As per queue'}</p><p style="margin-top:1rem;font-size:0.8rem">Please arrive 15 minutes early</p><script>window.print()</script></body></html>`);
   };
 
-  const statusBadge = s => ({ 'pending-admin': 'pending', pending: 'pending', confirmed: 'confirmed', completed: 'completed', cancelled: 'cancelled' }[s] || 'pending');
+  const statusBadge = s => ({
+    pending: 'pending', confirmed: 'confirmed', checked_in: 'confirmed',
+    prescribed: 'confirmed', completed: 'completed',
+    cancelled: 'cancelled', 'no-show': 'cancelled'
+  }[s] || 'pending');
 
   const calendarDays = {};
   appointments.forEach(a => {
@@ -174,8 +178,7 @@ export default function HDAppointments({ userId, hospital, API, defaultView = 'a
                       <td><span className={`hd-badge hd-badge-${statusBadge(a.status)}`}>{a.status}</span></td>
                       <td>
                         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                          {a.status === 'pending-admin' && <button className="hd-btn hd-btn-primary hd-btn-sm" onClick={() => updateStatus(a._id, 'confirmed')}>Confirm</button>}
-                          {(a.status === 'confirmed' || a.status === 'pending') && <button className="hd-btn hd-btn-secondary hd-btn-sm" onClick={() => updateStatus(a._id, 'completed')}><CheckSVG /> Done</button>}
+                          {(a.status === 'pending' || a.status === 'confirmed') && <button className="hd-btn hd-btn-secondary hd-btn-sm" onClick={() => updateStatus(a._id, 'completed')}><CheckSVG /> Done</button>}
                           {a.status !== 'cancelled' && a.status !== 'completed' && <button className="hd-btn hd-btn-danger hd-btn-sm" onClick={() => updateStatus(a._id, 'cancelled')}>×</button>}
                           <button className="hd-btn hd-btn-secondary hd-btn-sm" onClick={() => printToken(a)}><PrinterSVG /></button>
                         </div>

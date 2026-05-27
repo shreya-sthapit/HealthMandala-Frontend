@@ -61,10 +61,19 @@ export default function SetStaffPassword() {
       if (data.success) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        localStorage.setItem('userRole', data.user.role);
+        // Store the specific staff role (receptionist, pharmacist, etc.) for routing
+        const staffRole = data.user.staffRole || data.user.role;
+        localStorage.setItem('userRole', staffRole);
         setPageStatus('success');
-        // Redirect staff to hospital dashboard for now (staff dashboard to be created later)
-        setTimeout(() => navigate('/hospital-dashboard'), 1500);
+        // Redirect to role-specific dashboard
+        const dashboardMap = {
+          receptionist: '/receptionist-dashboard',
+          pharmacist: '/pharmacist-dashboard',
+          nurse: '/receptionist-dashboard',
+          lab_technician: '/receptionist-dashboard',
+        };
+        const destination = dashboardMap[staffRole] || '/hospital-dashboard';
+        setTimeout(() => navigate(destination), 1500);
       } else {
         if (data.error?.toLowerCase().includes('expired')) setPageStatus('expired');
         else setError(data.error || 'Something went wrong. Please try again.');

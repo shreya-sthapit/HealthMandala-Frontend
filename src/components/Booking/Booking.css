@@ -781,7 +781,22 @@
   background: #f1f1f1;
   color: #adb5bd;
   cursor: not-allowed;
-  text-decoration: line-through;
+}
+
+.time-slot.booked {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.6;
+  border-color: #cbd5e1;
+  pointer-events: none;
+}
+
+.time-slot.booked:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 /* Token Info Section */
@@ -1200,76 +1215,63 @@
   box-shadow: none;
 }
 
-/* Confirmation Page */
-.confirmation-card {
+/* Confirmation Page - Redesigned */
+.confirmation-header {
+  text-align: center;
+  padding: 3rem 2rem 2rem;
+  max-width: 700px;
+  margin: 2rem auto;
   background: white;
   border-radius: 16px;
-  padding: 3rem;
-  text-align: center;
-  max-width: 600px;
-  margin: 0 auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.confirmation-icon {
-  width: 80px;
-  height: 80px;
-  background: #d1fae5;
+.confirmation-icon-large {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.5rem;
+  font-size: 3.5rem;
   margin: 0 auto 1.5rem;
+  color: #059669;
+  box-shadow: 0 8px 24px rgba(5, 150, 105, 0.2);
 }
 
-.confirmation-card h2 {
-  font-size: 1.5rem;
+.confirmation-title {
+  font-size: 2rem;
   color: #1a2e35;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
   font-weight: 700;
 }
 
-.confirmation-card > p {
+.confirmation-subtitle {
   color: #64748b;
-  margin-bottom: 2rem;
-}
-
-.confirmation-details {
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 1.5rem;
-  text-align: left;
-  margin-bottom: 2rem;
-}
-
-.confirmation-details .detail-row {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-}
-
-.confirmation-details .detail-row:last-child {
+  font-size: 1.05rem;
   margin-bottom: 0;
 }
 
-.confirmation-details .label {
-  color: #64748b;
-}
-
-.confirmation-details .value {
-  font-weight: 600;
+.card-section-title {
+  text-align: center;
+  margin-bottom: 0.75rem;
   color: #1a2e35;
+  font-size: 1.3rem;
+  font-weight: 700;
 }
 
-.payment-status.paid {
-  color: #059669;
-  font-weight: 600;
+.card-section-subtitle {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: #64748b;
+  font-size: 0.95rem;
 }
 
-.payment-status.pending {
-  color: #f59e0b;
-  font-weight: 600;
+.patient-card-section {
+  max-width: 700px;
+  margin: 0 auto 2rem;
+  padding: 0 2rem;
 }
 
 /* Payment Section */
@@ -1438,10 +1440,47 @@
 .confirmation-actions {
   display: flex;
   gap: 1rem;
+  justify-content: center;
+  max-width: 700px;
+  margin: 0 auto 3rem;
+  padding: 0 2rem;
 }
 
 .confirmation-actions .btn {
   flex: 1;
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirmation-actions .btn-outline {
+  background: white;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+}
+
+.confirmation-actions .btn-outline:hover {
+  border-color: #00a896;
+  color: #00a896;
+  background: rgba(0, 168, 150, 0.05);
+}
+
+.confirmation-actions .btn-primary {
+  background: linear-gradient(135deg, #00a896 0%, #028a7a 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 168, 150, 0.3);
+}
+
+.confirmation-actions .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 168, 150, 0.4);
 }
 
 /* Responsive */
@@ -1462,133 +1501,164 @@
 }
 
 .patient-card {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-  border-radius: 20px;
-  padding: 2rem;
-  color: var(--white);
-  max-width: 400px;
-  margin: 0 auto;
-  box-shadow: 0 15px 40px rgba(0, 168, 150, 0.3);
-  position: relative;
+  background: white;
+  border-radius: 16px;
   overflow: hidden;
+  max-width: 420px;
+  margin: 0 auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  border: 3px solid #00a896;
+  position: relative;
 }
 
+/* Vertical stripe on left side like real ID cards */
 .patient-card::before {
   content: '';
   position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background: linear-gradient(180deg, #00a896 0%, #028a7a 100%);
 }
 
 .patient-card-header {
+  background: linear-gradient(135deg, #00a896 0%, #028a7a 100%);
+  color: white;
+  padding: 1.2rem 1.5rem 1.2rem 2rem;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.5rem;
-  position: relative;
-  z-index: 1;
+  align-items: center;
+  border-bottom: 3px solid #028a7a;
 }
 
 .patient-card-logo {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .patient-card-logo img {
-  height: 30px;
+  height: 28px;
   filter: brightness(0) invert(1);
 }
 
 .patient-card-logo span {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 1rem;
+  letter-spacing: 0.5px;
 }
 
 .card-type {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.3rem 0.8rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 500;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  padding: 0.35rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
 .patient-card-body {
-  position: relative;
-  z-index: 1;
+  padding: 1.8rem 1.5rem 1.8rem 2rem;
+  background: white;
 }
 
 .patient-name {
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 0.2rem;
+  color: #1a2e35;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .patient-id {
   font-size: 0.85rem;
-  opacity: 0.9;
+  color: #00a896;
   margin-bottom: 1.5rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
 }
 
 .card-details {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  gap: 0.8rem;
+  margin-bottom: 1.5rem;
 }
 
 .card-detail {
-  background: rgba(255, 255, 255, 0.15);
-  padding: 0.75rem;
-  border-radius: 10px;
+  background: #f8fafc;
+  padding: 0.8rem;
+  border-radius: 8px;
+  border-left: 3px solid #00a896;
 }
 
 .card-detail .label {
-  font-size: 0.7rem;
-  opacity: 0.8;
+  font-size: 0.65rem;
+  color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 0.25rem;
+  letter-spacing: 0.8px;
+  margin-bottom: 0.3rem;
+  font-weight: 700;
 }
 
 .card-detail .value {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.9rem;
+  color: #1a2e35;
 }
 
 .card-qr {
-  margin-top: 1.5rem;
+  margin-top: 1.2rem;
+  padding-top: 1.2rem;
+  border-top: 2px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
+  gap: 1.2rem;
 }
 
 .qr-placeholder {
-  width: 70px;
-  height: 70px;
-  background: var(--white);
+  width: 85px;
+  height: 85px;
+  background: white;
   border-radius: 8px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: 0.6rem;
-  color: var(--text-dark);
+  color: #64748b;
   text-align: center;
   padding: 0.5rem;
+  font-weight: 700;
+  border: 2px solid #00a896;
+  flex-shrink: 0;
+  line-height: 1.3;
 }
 
 .card-validity {
   text-align: right;
-  font-size: 0.75rem;
-  opacity: 0.9;
+  flex: 1;
+}
+
+.card-validity > div:first-child {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-bottom: 0.2rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .card-validity .date {
-  font-weight: 600;
-  font-size: 0.85rem;
+  font-weight: 800;
+  font-size: 1rem;
+  color: #1a2e35;
+  font-family: 'Courier New', monospace;
 }
 
 /* Card Actions */
@@ -1602,28 +1672,37 @@
 .card-action-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  font-weight: 500;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
   border: none;
+  flex: 1;
 }
 
 .card-action-btn.download {
-  background: var(--white);
-  color: var(--primary-color);
+  background: linear-gradient(135deg, #00a896 0%, #028a7a 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 168, 150, 0.3);
+}
+
+.card-action-btn.download:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 168, 150, 0.4);
 }
 
 .card-action-btn.share {
-  background: rgba(0, 168, 150, 0.1);
-  color: var(--primary-color);
-  border: 2px solid var(--primary-color);
+  background: white;
+  color: #00a896;
+  border: 2px solid #00a896;
 }
 
-.card-action-btn:hover {
+.card-action-btn.share:hover {
+  background: rgba(0, 168, 150, 0.05);
   transform: translateY(-2px);
 }
 
@@ -2599,9 +2678,6 @@
   cursor: pointer;
 }
 
-.date-box.today {
-  border-color: #f59e0b;
-}
 
 .date-day {
   font-size: 0.7rem;
@@ -2656,6 +2732,22 @@
   background: #00a896;
   border-color: #00a896;
   color: white;
+}
+
+.time-slot.booked {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.6;
+  border-color: #cbd5e1;
+  pointer-events: none;
+}
+
+.time-slot.booked:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
 }
 
 .loading-state,
@@ -4183,218 +4275,129 @@
 
 
 /* ═══════════════════════════════════════════════════════════
-   STEP 5: CONFIRMATION & PAYMENT - NEW DESIGN
+   STEP 5: CONFIRMATION & PAYMENT - USING STEP 4 LAYOUT
    ═══════════════════════════════════════════════════════════ */
 
-.step5-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 2rem;
-}
+/* Step 5 uses step4-container and step4-layout from Step 4 */
 
-.step5-header {
-  text-align: center;
-  margin-bottom: 2.5rem;
-}
-
-.step5-icon {
-  width: 70px;
-  height: 70px;
-  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  margin: 0 auto 1rem;
-  color: #059669;
-  font-weight: 700;
-}
-
-.step5-header h2 {
-  font-size: 1.75rem;
-  color: #1a2e35;
-  margin-bottom: 0.5rem;
-  font-weight: 700;
-}
-
-.step5-header p {
-  color: #64748b;
-  font-size: 1rem;
-}
-
-.step5-content {
-  display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 2rem;
-  align-items: start;
-}
-
-.step5-left {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.step5-right {
-  position: sticky;
-  top: 2rem;
-}
-
-.step5-card {
+/* Patient Details Section (Right Column) */
+.step5-patient-section {
   background: white;
-  border-radius: 16px;
-  padding: 1.75rem;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   border: 1px solid #e2e8f0;
 }
 
-.step5-card-title {
-  font-size: 1.15rem;
+.step5-patient-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.step5-patient-header:hover {
+  opacity: 0.8;
+}
+
+.step5-patient-section h2 {
+  font-size: 1.1rem;
   color: #1a2e35;
-  margin: 0 0 1.25rem 0;
+  margin: 0;
+  font-weight: 700;
+}
+
+.step5-patient-header svg {
+  color: #64748b;
+  flex-shrink: 0;
+  stroke-width: 2.5;
+}
+
+.step5-patient-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.step5-summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.step5-summary-label {
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.step5-summary-value {
+  font-size: 1rem;
+  color: #1a2e35;
+  font-weight: 600;
+}
+
+.step5-patient-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.step5-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.step5-detail-row:last-child {
+  border-bottom: none;
+}
+
+.step5-label {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 500;
+  flex: 0 0 35%;
+}
+
+.step5-value {
+  font-size: 0.9rem;
+  color: #1a2e35;
+  font-weight: 500;
+  text-align: right;
+  flex: 1;
+  word-wrap: break-word;
+}
+
+/* Payment Method Section (Right Column) */
+.step5-payment-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+}
+
+.step5-payment-section h2 {
+  font-size: 1.1rem;
+  color: #1a2e35;
+  margin: 0 0 1rem 0;
   font-weight: 700;
   padding-bottom: 0.75rem;
   border-bottom: 2px solid #f1f5f9;
 }
 
-/* Doctor Info */
-.step5-doctor-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.step5-doctor-avatar {
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #00c9b1, #0284c7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 1.75rem;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.step5-doctor-details h4 {
-  margin: 0 0 0.25rem 0;
-  font-size: 1.1rem;
-  color: #1a2e35;
-  font-weight: 600;
-}
-
-.step5-doctor-details p {
-  margin: 0;
-  color: #64748b;
-  font-size: 0.95rem;
-}
-
-/* Info Grid */
-.step5-info-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.25rem;
-}
-
-.step5-info-item {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-}
-
-.step5-info-item svg {
-  flex-shrink: 0;
-  color: #00a896;
-  margin-top: 0.15rem;
-}
-
-.step5-info-item > div {
-  flex: 1;
-  min-width: 0;
-}
-
-.step5-info-item label {
-  display: block;
-  font-size: 0.8rem;
-  color: #64748b;
-  margin-bottom: 0.15rem;
-  font-weight: 500;
-}
-
-.step5-info-item span {
-  display: block;
-  font-size: 0.95rem;
-  color: #1a2e35;
-  font-weight: 500;
-  word-wrap: break-word;
-}
-
-/* Payment Card */
-.step5-payment-card {
-  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
-}
-
-.step5-payment-details {
-  margin-bottom: 1.5rem;
-}
-
-.step5-payment-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 0;
-  font-size: 0.95rem;
-}
-
-.step5-payment-row span:first-child {
-  color: #64748b;
-}
-
-.step5-payment-row span:last-child {
-  color: #1a2e35;
-  font-weight: 600;
-}
-
-.step5-payment-divider {
-  height: 1px;
-  background: #e2e8f0;
-  margin: 0.5rem 0;
-}
-
-.step5-payment-total {
-  padding-top: 1rem;
-  font-size: 1.1rem;
-}
-
-.step5-payment-total span:first-child {
-  color: #1a2e35;
-  font-weight: 700;
-}
-
-.step5-payment-total span:last-child {
-  color: #00a896;
-  font-weight: 700;
-  font-size: 1.25rem;
-}
-
-/* Payment Method */
-.step5-payment-method {
-  margin-bottom: 1.5rem;
-  padding-top: 1rem;
-  border-top: 2px solid #f1f5f9;
-}
-
-.step5-payment-method h4 {
-  font-size: 1rem;
-  color: #1a2e35;
-  margin: 0 0 0.75rem 0;
-  font-weight: 600;
-}
-
-.step5-khalti-option {
+.step5-khalti-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -4402,9 +4405,10 @@
   border: 2px solid #5c2d91;
   border-radius: 12px;
   background: rgba(92, 45, 145, 0.05);
+  margin-bottom: 0.5rem;
 }
 
-.step5-khalti-option img {
+.step5-khalti-card img {
   height: 28px;
   object-fit: contain;
 }
@@ -4429,9 +4433,55 @@
 }
 
 .step5-payment-note {
-  margin: 0.5rem 0 0 0;
+  margin: 0 0 1rem 0;
   font-size: 0.85rem;
   color: #64748b;
+}
+
+/* Payment Summary */
+.step5-payment-summary {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 2px solid #f1f5f9;
+}
+
+.step5-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.step5-summary-row span:first-child {
+  color: #64748b;
+}
+
+.step5-summary-row span:last-child {
+  color: #1a2e35;
+  font-weight: 600;
+}
+
+.step5-summary-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 0.5rem 0;
+}
+
+.step5-summary-total {
+  padding-top: 0.5rem;
+  font-size: 1.05rem;
+}
+
+.step5-summary-total span:first-child {
+  color: #1a2e35;
+  font-weight: 700;
+}
+
+.step5-summary-total span:last-child {
+  color: #00a896;
+  font-weight: 700;
+  font-size: 1.2rem;
 }
 
 /* Action Buttons */
@@ -4479,29 +4529,418 @@
 
 /* Responsive */
 @media (max-width: 1024px) {
-  .step5-content {
-    grid-template-columns: 1fr;
-  }
-
-  .step5-right {
-    position: static;
-  }
-
-  .step5-info-grid {
+  .step5-actions {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 640px) {
-  .step5-container {
-    padding: 1rem;
-  }
-
-  .step5-card {
+  .step5-patient-section,
+  .step5-payment-section {
     padding: 1.25rem;
   }
 
   .step5-actions {
     grid-template-columns: 1fr;
+  }
+}
+
+
+/* ============================================
+   DIGITAL PATIENT CARD - BOOKING CONFIRMED
+   ============================================ */
+
+.digital-patient-card-wrapper {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding-top: 1rem;
+}
+
+/* The Card itself */
+.digital-patient-card {
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid #e2e8f0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ---- Hospital Header ---- */
+.card-hospital-header {
+  background: linear-gradient(135deg, #0f4c75 0%, #1b6ca8 100%);
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hospital-logo-section {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.hospital-logo-circle {
+  width: 38px;
+  height: 38px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+  font-size: 1.1rem;
+}
+
+.hospital-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.hospital-name {
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.hospital-location {
+  color: #ffffff;
+  font-size: 0.72rem;
+  margin-top: 0.15rem;
+}
+
+/* ---- Patient Info Section ---- */
+.card-patient-info {
+  background: #f8fafc;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 2px dashed #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.info-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.info-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1e293b;
+  text-transform: uppercase;
+}
+
+.patient-name-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f4c75;
+  letter-spacing: 0.5px;
+}
+
+.mrn-value {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f4c75;
+  letter-spacing: 1px;
+}
+
+/* ---- QR + Appointment side by side ---- */
+.card-middle-section {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  border-bottom: 2px dashed #cbd5e1;
+}
+
+/* ---- QR Code Section ---- */
+.card-qr-section {
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  background: #ffffff;
+  border-right: 2px dashed #cbd5e1;
+}
+
+.qr-code-image {
+  width: 110px;
+  height: 110px;
+  border: 2px solid #0f4c75;
+  border-radius: 6px;
+  padding: 3px;
+}
+
+.qr-code-placeholder {
+  width: 110px;
+  height: 110px;
+  border: 2px solid #0f4c75;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8fafc;
+}
+
+.qr-loading {
+  color: #64748b;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.qr-instruction {
+  font-size: 0.65rem;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ---- Appointment Details ---- */
+.card-appointment-details {
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  justify-content: center;
+}
+
+.detail-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.detail-row.single {
+  grid-template-columns: 1fr;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.detail-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.detail-value {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.token-value {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f4c75;
+  font-family: 'Courier New', monospace;
+}
+
+/* ---- Payment Footer ---- */
+.card-payment-footer {
+  background: #0f4c75;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.payment-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #16a34a;
+  color: white;
+  padding: 0.3rem 0.85rem;
+  border-radius: 20px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.4);
+}
+
+.status-icon {
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.status-text {
+  font-size: 0.8rem;
+  letter-spacing: 1.5px;
+}
+
+.payment-gateway {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-left: auto;
+}
+
+.gateway-label {
+  font-size: 0.58rem;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.gateway-value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.transaction-id {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.txn-label {
+  font-size: 0.58rem;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.txn-value {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'Courier New', monospace;
+}
+
+/* ---- Download Button ---- */
+.card-actions-section {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.25rem;
+}
+
+.download-card-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: linear-gradient(135deg, #0f4c75 0%, #1b6ca8 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.75rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(15, 76, 117, 0.3);
+}
+
+.download-card-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(15, 76, 117, 0.4);
+}
+
+.download-card-btn:active {
+  transform: translateY(0);
+}
+
+/* ---- Notes ---- */
+.card-notes {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  background: #f0f9ff;
+  border-radius: 10px;
+  border: 1px solid #bae6fd;
+}
+
+.note-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: #0369a1;
+}
+
+.note-icon {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 480px) {
+  .digital-patient-card-wrapper {
+    padding: 0 0.25rem;
+  }
+
+  .card-hospital-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .hospital-name {
+    font-size: 0.8rem;
+  }
+
+  .card-patient-info {
+    padding: 0.65rem 1rem;
+  }
+
+  .card-middle-section {
+    grid-template-columns: 1fr;
+  }
+
+  .card-qr-section {
+    border-right: none;
+    border-bottom: 2px dashed #cbd5e1;
+    padding: 0.75rem;
+  }
+
+  .qr-code-image {
+    width: 100px;
+    height: 100px;
+  }
+
+  .card-appointment-details {
+    padding: 0.75rem 1rem;
+  }
+
+  .card-payment-footer {
+    padding: 0.65rem 1rem;
+    gap: 0.5rem;
+  }
+
+  .token-value {
+    font-size: 1rem;
   }
 }

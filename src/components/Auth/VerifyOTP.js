@@ -119,35 +119,29 @@ const VerifyOTP = () => {
       const data = await response.json();
 
       if (data.success) {
-        // Phone verified, now register user in MongoDB
+        // Phone verified — get a pending token (no User created yet)
         try {
           const registerResponse = await fetch('http://localhost:5001/api/auth/register/phone', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              firstName,
-              lastName,
-              phone: userContact,
-              password,
-              role
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ firstName, lastName, phone: userContact, password, role }),
           });
-
           const registerData = await registerResponse.json();
 
           if (registerData.success) {
-            // Redirect based on role
-            const redirectPath = role === 'doctor' ? '/doctor-register/personal' : '/register/personal';
-            navigate(redirectPath, { 
-              state: { 
+            // Store pending token — User will be created when registration form is submitted
+            if (registerData.pendingToken) {
+              sessionStorage.setItem('pendingToken', registerData.pendingToken);
+            }
+            const redirectPath = role === 'doctor' ? '/doctor-register/personal' : '/register';
+            navigate(redirectPath, {
+              state: {
                 role,
-                userId: registerData.user.id,
+                pendingToken: registerData.pendingToken,
                 firstName,
                 lastName,
                 phone: userContact
-              } 
+              }
             });
           } else {
             setError(registerData.error || 'Registration failed. Please try again.');

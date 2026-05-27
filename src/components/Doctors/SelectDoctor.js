@@ -12,6 +12,8 @@ const SelectDoctor = () => {
   const [selectedSpecialty, setSelectedSpecialty] = useState('All Specializations');
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  // Track booked slots: key = `${doctorId}_${dateStr}`, value = Set of booked time strings
+  const [bookedSlotsMap, setBookedSlotsMap] = useState({});
   
   // Complete list of specializations
   const specialties = [
@@ -51,6 +53,9 @@ const SelectDoctor = () => {
   };
 
   useEffect(() => {
+    // Clear booked slots cache on mount so navigating back after a booking
+    // always fetches fresh slot availability from the server.
+    setBookedSlotsMap({});
     fetchDoctors();
     // Check if a specialty was pre-selected from navigation
     if (location.state?.preSelectedSpecialty) {
@@ -70,6 +75,33 @@ const SelectDoctor = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Fetch booked slots for a specific doctor on a specific date
+  // Uses a per-session cache to avoid re-fetching on every render,
+  // but the cache is cleared on mount so navigating back always gets fresh data.
+  const fetchBookedSlots = async (doctorId, dateStr, hospitalName) => {
+    const key = `${doctorId}_${dateStr}`;
+    if (bookedSlotsMap[key] !== undefined) return; // already fetched this session
+    try {
+      const res = await fetch(
+        `http://localhost:5001/api/doctor/slots/${doctorId}?date=${dateStr}&hospitalName=${encodeURIComponent(hospitalName || '')}`
+      );
+      const data = await res.json();
+      if (data.success && data.slots) {
+        const booked = new Set(
+          data.slots.filter(s => s.isBooked).map(s => s.time)
+        );
+        setBookedSlotsMap(prev => ({ ...prev, [key]: booked }));
+      }
+    } catch (e) {
+      // silent fail
+    }
+  };
+
+  const isSlotBooked = (doctorId, dateStr, slotTime) => {
+    const key = `${doctorId}_${dateStr}`;
+    return bookedSlotsMap[key]?.has(slotTime) ?? false;
   };
 
   const filtered = doctors.filter(doc => {
@@ -127,22 +159,42 @@ const SelectDoctor = () => {
   const getNextAvailableTime = (doc) => {
     const dates = getNextDates(doc);
     if (dates.length === 0) return null;
-    
-    const firstDate = dates[0];
-    const slots = getTimeSlots(doc, firstDate);
-    if (slots.length === 0) return null;
-    
+
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = monthNames[firstDate.getMonth()];
-    const day = firstDate.getDate();
-    
-    // Convert 24h time to 12h format
-    const [hours, minutes] = slots[0].split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
-    const timeStr = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-    
-    return `${month} ${day} at ${timeStr}`;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+    const docId = doc.id || doc._id;
+    const hospitalName = Array.isArray(doc.hospital) ? doc.hospital[0] : (doc.hospital || '');
+
+    for (const date of dates) {
+      const slots = getTimeSlots(doc, date);
+      if (slots.length === 0) continue;
+
+      const dateIso = date.toISOString().split('T')[0];
+      const isToday = dateIso === todayStr;
+      const cacheKey = `${docId}_${dateIso}`;
+      const bookedSet = bookedSlotsMap[cacheKey]; // may be undefined if not yet fetched
+
+      for (const slot of slots) {
+        // Skip past slots when today is selected
+        if (isToday) {
+          const [h, m] = slot.split(':').map(Number);
+          if (h * 60 + m <= nowMinutes) continue;
+        }
+        // Skip booked slots (only when cache is available)
+        if (bookedSet && bookedSet.has(slot)) continue;
+
+        const month = monthNames[date.getMonth()];
+        const day = date.getDate();
+        const [hours, minutes] = slot.split(':').map(Number);
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
+        const timeStr = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+        return `${month} ${day} at ${timeStr}`;
+      }
+    }
+
+    return null;
   };
 
   const getTimeSlots = (doc, date) => {
@@ -185,10 +237,9 @@ const SelectDoctor = () => {
     const endMin = toMin(end);
     const breakStartMin = hasBreak ? toMin(breakStart) : null;
     const breakEndMin = hasBreak ? toMin(breakEnd) : null;
+    const interval = doc.consultationDuration || 10;
     
-    // Generate 10-minute slots, excluding break time
-    for (let m = startMin; m < endMin; m += 10) {
-      // Skip if this slot falls within break time
+    for (let m = startMin; m < endMin; m += interval) {
       if (hasBreak && m >= breakStartMin && m < breakEndMin) {
         continue;
       }
@@ -226,7 +277,7 @@ const SelectDoctor = () => {
       sessionStorage.setItem('bookingIntent', JSON.stringify(bookingIntent));
       console.log('Saved booking intent:', bookingIntent);
       console.log('Navigating to /login...');
-      navigate('/login?redirect=/find-doctors');
+      navigate('/login?redirect=/book-appointment');
       return;
     }
     
@@ -425,8 +476,8 @@ const SelectDoctor = () => {
                           const formatTime12h = (time24) => {
                             const [hours, minutes] = time24.split(':').map(Number);
                             const period = hours >= 12 ? 'PM' : 'AM';
-                            const hours12 = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
-                            return `${String(hours12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${period}`;
+                            const hours12 = hours % 12 || 12;
+                            return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
                           };
                           
                           // Get schedule from hospitalSchedules or flat schedule
@@ -449,26 +500,56 @@ const SelectDoctor = () => {
                           }
                           
                           const slots = getTimeSlots(doc, date);
-                          const displaySlots = slots.slice(0, 4); // Show first 4 slots
                           const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                          const dateIso = date.toISOString().split('T')[0];
+                          const docId = doc.id || doc._id;
+                          const hospitalName = Array.isArray(doc.hospital) ? doc.hospital[0] : (doc.hospital || '');
+                          // Trigger fetch for this doctor+date (lazy)
+                          fetchBookedSlots(docId, dateIso, hospitalName);
+
+                          const todayIso = new Date().toISOString().split('T')[0];
+                          const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+                          const isToday = dateIso === todayIso;
+
+                          // Show first 4 slots always; mark each as booked or past
+                          const displaySlots = slots.slice(0, 4).map(slot => {
+                            const isBooked = isSlotBooked(docId, dateIso, slot);
+                            const isPast = isToday && (() => {
+                              const [h, m] = slot.split(':').map(Number);
+                              return h * 60 + m <= nowMinutes;
+                            })();
+                            return { slot, disabled: isBooked || isPast };
+                          });
+                          // Count remaining selectable slots beyond the first 4
+                          const remainingCount = slots.slice(4).filter(slot => {
+                            if (isSlotBooked(docId, dateIso, slot)) return false;
+                            if (isToday) {
+                              const [h, m] = slot.split(':').map(Number);
+                              if (h * 60 + m <= nowMinutes) return false;
+                            }
+                            return true;
+                          }).length;
 
                           return (
                             <div key={di} className="schedule-row">
                               <span className="sched-date">{dateStr}</span>
                               <span className="sched-range">{timeRange}</span>
-                              <div className="sched-slots">
-                                {displaySlots.map(slot => (
+                              <div className="sched-slots" style={{ flexWrap: 'nowrap', alignItems: 'center' }}>
+                                {displaySlots.map(({ slot, disabled }) => (
                                   <button
                                     key={slot}
-                                    className="slot-btn"
-                                    onClick={() => handleBookSlot(doc, date, slot)}
+                                    className={`slot-btn${disabled ? ' booked' : ''}`}
+                                    disabled={disabled}
+                                    onClick={() => !disabled && handleBookSlot(doc, date, slot)}
+                                    title={slot}
+                                    style={disabled ? { opacity: 0.4, cursor: 'not-allowed', pointerEvents: 'none' } : {}}
                                   >
                                     {formatTime12h(slot)}
                                   </button>
                                 ))}
-                                {slots.length > 4 && (
-                                  <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '0.25rem' }}>
-                                    +{slots.length - 4} more
+                                {remainingCount > 0 && (
+                                  <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '0.25rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                                    +{remainingCount} more
                                   </span>
                                 )}
                               </div>

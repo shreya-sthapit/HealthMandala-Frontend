@@ -237,9 +237,9 @@ const Home = () => {
         {/* Quick Actions */}
         <section className="quick-actions">
           <a 
-            href="/book-appointment" 
+            href="/find-doctors" 
             className="action-card"
-            onClick={(e) => handleProtectedAction(e, () => navigate('/book-appointment'))}
+            onClick={(e) => handleProtectedAction(e, () => navigate('/find-doctors'))}
           >
             <div className="action-icon blue">+</div>
             <div>
@@ -328,10 +328,10 @@ const Home = () => {
                       Cancel
                     </button>
                     <a 
-                      href="/book-appointment"
+                      href="/find-doctors"
                       className="btn-sm btn-reschedule"
                       style={{ textDecoration: 'none', display: 'inline-block', textAlign: 'center' }}
-                      onClick={(e) => handleProtectedAction(e, () => navigate('/book-appointment'))}
+                      onClick={(e) => handleProtectedAction(e, () => navigate('/find-doctors'))}
                     >
                       Reschedule
                     </a>
@@ -343,9 +343,9 @@ const Home = () => {
             <div className="no-appointments">
               <p>No upcoming appointments</p>
               <a 
-                href="/book-appointment" 
+                href="/find-doctors" 
                 className="btn btn-primary"
-                onClick={(e) => handleProtectedAction(e, () => navigate('/book-appointment'))}
+                onClick={(e) => handleProtectedAction(e, () => navigate('/find-doctors'))}
               >
                 Book Now
               </a>

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import PatientDetailModal from './PatientDetailModal';
 import './DoctorPatients.css';
 
-const DoctorPatients = () => {
+const DoctorPatients = ({ embedded = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,29 +62,33 @@ const DoctorPatients = () => {
 
   return (
     <div className="doctor-patients">
-      <nav className="top-navbar">
-        <Link to="/doctor-dashboard" className="logo">
-          <img src="/logo.png" alt="HealthMandala" />
-          <span>HealthMandala</span>
-        </Link>
-        <div className="nav-right">
-          <div className="nav-icons">
-            <button className="nav-icon" title="Notifications">N</button>
-            <Link to="/profile" className="user-menu">
-              <div className="user-avatar">
-                {JSON.parse(localStorage.getItem('user') || '{}').firstName?.[0] || 'U'}
-                {JSON.parse(localStorage.getItem('user') || '{}').lastName?.[0] || ''}
-              </div>
-            </Link>
+      {!embedded && (
+        <nav className="top-navbar">
+          <Link to="/doctor-dashboard" className="logo">
+            <img src="/logo.png" alt="HealthMandala" />
+            <span>HealthMandala</span>
+          </Link>
+          <div className="nav-right">
+            <div className="nav-icons">
+              <button className="nav-icon" title="Notifications">N</button>
+              <Link to="/profile" className="user-menu">
+                <div className="user-avatar">
+                  {JSON.parse(localStorage.getItem('user') || '{}').firstName?.[0] || 'U'}
+                  {JSON.parse(localStorage.getItem('user') || '{}').lastName?.[0] || ''}
+                </div>
+              </Link>
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      )}
 
       <div className="patients-content">
-        <div className="page-header">
-          <Link to="/doctor-dashboard" className="back-btn">← Back to Dashboard</Link>
-          <h1>My Patients</h1>
-        </div>
+        {!embedded && (
+          <div className="page-header">
+            <Link to="/doctor-dashboard" className="back-btn">← Back to Dashboard</Link>
+            <h1>My Patients</h1>
+          </div>
+        )}
 
         <div className="patients-toolbar">
           <div className="search-box">
@@ -105,10 +109,13 @@ const DoctorPatients = () => {
 
         {loading ? (
           <div className="loading-state">Loading patients...</div>
+        ) : sortedPatients.length === 0 ? (
+          <div className="patients-empty-state">
+            <p>No patients found. Patients will appear here once they have completed appointments.</p>
+          </div>
         ) : (
           <div className="patients-grid">
-            {sortedPatients.length > 0 ? (
-              sortedPatients.map((patient) => (
+            {sortedPatients.map((patient) => (
                 <div key={patient.id} className="patient-card">
                   <div className="patient-card-header">
                     {patient.profilePhoto ? (
@@ -166,12 +173,7 @@ const DoctorPatients = () => {
                     </button>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="empty-state">
-                <p>No patients found. Patients will appear here after you confirm their appointments.</p>
-              </div>
-            )}
+            ))}
           </div>
         )}
       </div>

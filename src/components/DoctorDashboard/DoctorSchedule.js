@@ -17,6 +17,13 @@ const to24h = (hour, minute, period) => {
   return `${String(h).padStart(2, '0')}:${minute}`;
 };
 
+// Format a 24h time string to readable 12h display
+const formatTime = (time24) => {
+  if (!time24) return '—';
+  const { hour, minute, period } = to12h(time24);
+  return `${hour}:${minute} ${period}`;
+};
+
 const HOURS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 const MINUTES = ['00','15','30','45'];
 
@@ -60,7 +67,7 @@ const TimePicker = ({ value, onChange }) => {
   );
 };
 
-const DoctorSchedule = () => {
+const DoctorSchedule = ({ embedded = false }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -97,13 +104,26 @@ const DoctorSchedule = () => {
         // Build per-hospital schedule map
         const map = {};
         hospitalList.forEach(h => {
-          // Check if there's a saved per-hospital schedule
+          // Prefer per-hospital saved schedule
           const saved = profile.hospitalSchedules?.find(hs => hs.hospital === h);
+
+          // lunchBreak: per-hospital → top-level → null (no hardcoded default)
+          const lunchBreak = saved?.lunchBreak?.start
+            ? saved.lunchBreak
+            : (profile.lunchBreak?.start ? profile.lunchBreak : null);
+
+          // consultationDuration: top-level is the authoritative value (set by hospital admin)
+          // hospitalSchedules[].consultationDuration can be stale — ignore it
+          const consultationDuration =
+            (profile.consultationDuration != null && profile.consultationDuration !== 0)
+              ? profile.consultationDuration
+              : null;
+
           map[h] = {
             schedule: saved?.schedule?.length > 0 ? saved.schedule : DEFAULT_SCHEDULE(),
-            lunchBreak: saved?.lunchBreak || profile.lunchBreak || { start: '13:00', end: '14:00' },
-            consultationDuration: saved?.consultationDuration || profile.consultationDuration || 30,
-            maxPatientsPerDay: saved?.maxPatientsPerDay || profile.maxPatientsPerDay || 20,
+            lunchBreak,
+            consultationDuration,
+            maxPatientsPerDay: saved?.maxPatientsPerDay || profile.maxPatientsPerDay || null,
           };
         });
         setHospitalSchedules(map);
@@ -117,9 +137,9 @@ const DoctorSchedule = () => {
 
   const current = hospitalSchedules[activeHospital] || {
     schedule: DEFAULT_SCHEDULE(),
-    lunchBreak: { start: '13:00', end: '14:00' },
-    consultationDuration: 30,
-    maxPatientsPerDay: 20,
+    lunchBreak: null,
+    consultationDuration: null,
+    maxPatientsPerDay: null,
   };
 
   const updateCurrent = (patch) => {
@@ -214,31 +234,48 @@ const DoctorSchedule = () => {
   return (
     <div className="doctor-schedule">
       <div className="schedule-content">
-        <div className="page-header">
-          <Link to="/doctor-dashboard" className="back-btn">← Back to Dashboard</Link>
-          <h1>My Schedule</h1>
-        </div>
+        {!embedded && (
+          <div className="page-header">
+            <Link to="/doctor-dashboard" className="back-btn">← Back to Dashboard</Link>
+            <h1>My Schedule</h1>
+          </div>
+        )}
 
         {/* Hospital tabs */}
         {hospitals.length > 1 && (
-          <div className="hospital-tabs">
-            {hospitals.map(h => (
-              <button
-                key={h}
-                className={`hospital-tab ${activeHospital === h ? 'active' : ''}`}
-                onClick={() => setActiveHospital(h)}
-              >
-                {h}
-              </button>
-            ))}
+          <div className="schedule-meta-row">
+            <div className="hospital-tabs">
+              {hospitals.map(h => (
+                <button
+                  key={h}
+                  className={`hospital-tab ${activeHospital === h ? 'active' : ''}`}
+                  onClick={() => setActiveHospital(h)}
+                >
+                  {h}
+                </button>
+              ))}
+            </div>
+            <div className="duration-info">
+              <span className="duration-label">Duration per patient:</span>
+              <span className="duration-value">
+                {current.consultationDuration != null ? `${current.consultationDuration} min` : '—'}
+              </span>
+            </div>
           </div>
         )}
 
-        {hospitals.length === 1 && (
-          <div className="hospital-single-label">
-            <span>🏥 {activeHospital}</span>
+        {/* Duration per patient - aligned with hospital info */}
+        <div className="schedule-meta-row">
+            <div className="hospital-single-label">
+              <span>🏥 {activeHospital}</span>
+            </div>
+            <div className="duration-info">
+              <span className="duration-label">Duration per patient:</span>
+              <span className="duration-value">
+                {current.consultationDuration != null ? `${current.consultationDuration} min` : '—'}
+              </span>
+            </div>
           </div>
-        )}
 
         {message && (
           <div className={`message ${message.includes('success') || message.includes('saved') ? 'success' : 'error'}`}>
@@ -246,85 +283,54 @@ const DoctorSchedule = () => {
           </div>
         )}
 
-        <div className="schedule-grid">
-          <div className="schedule-card">
-            <h2>Working Hours</h2>
-            <div className="hours-list">
-              {current.schedule.map((item, index) => (
-                <div key={item.day} className="hours-item">
-                  <span className="day">{item.day}</span>
-                  <div className="time">
-                    {item.active ? (
-                      <>
-                        <TimePicker value={item.start} onChange={val => updateTime(index, 'start', val)} />
-                        <span className="to-label">to</span>
-                        <TimePicker value={item.end} onChange={val => updateTime(index, 'end', val)} />
-                      </>
-                    ) : (
-                      <span className="off-label">Off</span>
-                    )}
-                  </div>
-                  <div className={`toggle ${item.active ? 'active' : ''}`} onClick={() => toggleDay(index)} />
-                </div>
-              ))}
+        {/* Full width working hours table */}
+        <div className="schedule-card schedule-full-width">
+          <h2>Working Hours</h2>
+          <div className="hours-table">
+            <div className="hours-table-header">
+              <div className="col-day">Day</div>
+              <div className="col-schedule">Schedule</div>
+              <div className="col-break">Break Time</div>
             </div>
-
-            <div className="break-settings">
-              <h3>Lunch Break</h3>
-              <div className="break-inputs">
-                <TimePicker value={current.lunchBreak.start} onChange={val => updateCurrent({ lunchBreak: { ...current.lunchBreak, start: val } })} />
-                <span>to</span>
-                <TimePicker value={current.lunchBreak.end} onChange={val => updateCurrent({ lunchBreak: { ...current.lunchBreak, end: val } })} />
-              </div>
-            </div>
-
-            <button className="save-btn" onClick={handleSaveSchedule} disabled={saving}>
-              {saving ? 'Saving...' : `Save Schedule for ${activeHospital}`}
-            </button>
-          </div>
-
-          <div>
-            <div className="schedule-card">
-              <h2>Consultation Settings</h2>
-              <div className="consultation-settings">
-                <div className="setting-item">
-                  <span className="label">Duration per patient</span>
-                  <div>
-                    <input type="number" value={current.consultationDuration}
-                      onChange={e => updateCurrent({ consultationDuration: parseInt(e.target.value) })} /> min
-                  </div>
+            {current.schedule.map((item) => (
+              <div key={item.day} className="hours-table-row">
+                <div className="col-day">
+                  <span className="day-name">{item.day}</span>
                 </div>
-                <div className="setting-item">
-                  <span className="label">Consultation Fee</span>
-                  <div>Rs. <input type="number" value={consultationFee} onChange={e => setConsultationFee(parseInt(e.target.value))} /></div>
-                </div>
-                <div className="setting-item">
-                  <span className="label">Max patients per day</span>
-                  <input type="number" value={current.maxPatientsPerDay}
-                    onChange={e => updateCurrent({ maxPatientsPerDay: parseInt(e.target.value) })} />
-                </div>
-              </div>
-            </div>
-
-            <div className="schedule-card" style={{ marginTop: '1.5rem' }}>
-              <h2>Upcoming Leaves</h2>
-              <div className="leave-list">
-                {leaves.length === 0 ? (
-                  <p style={{ color: '#6b7280', textAlign: 'center', padding: '1rem' }}>No upcoming leaves</p>
-                ) : leaves.map(leave => (
-                  <div key={leave._id} className="leave-item">
-                    <div>
-                      <div className="dates">
-                        {new Date(leave.startDate).toLocaleDateString()} - {new Date(leave.endDate).toLocaleDateString()}
-                      </div>
-                      <div className="reason">{leave.reason}</div>
+                <div className="col-schedule">
+                  {item.active ? (
+                    <div className="schedule-time-range">
+                      <span className="schedule-time-display">{formatTime(item.start)}</span>
+                      <span className="to-label">to</span>
+                      <span className="schedule-time-display">{formatTime(item.end)}</span>
                     </div>
-                    <button className="remove-btn" onClick={() => handleRemoveLeave(leave._id)}>Remove</button>
-                  </div>
-                ))}
+                  ) : (
+                    <span className="off-label">Off</span>
+                  )}
+                </div>
+                <div className="col-break">
+                  {item.active ? (
+                    <div className="break-time-range">
+                      {item.hasBreak && item.breakStart && item.breakEnd ? (
+                        // Per-day break stored on the schedule entry itself
+                        <span className="schedule-break-display">
+                          {formatTime(item.breakStart)} - {formatTime(item.breakEnd)}
+                        </span>
+                      ) : current.lunchBreak?.start && current.lunchBreak?.end ? (
+                        // Fall back to the global lunch break for this hospital
+                        <span className="schedule-break-display">
+                          {formatTime(current.lunchBreak.start)} - {formatTime(current.lunchBreak.end)}
+                        </span>
+                      ) : (
+                        <span className="break-off">—</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="break-off">—</span>
+                  )}
+                </div>
               </div>
-              <button className="add-leave-btn" onClick={() => setShowLeaveModal(true)}>+ Add Leave</button>
-            </div>
+            ))}
           </div>
         </div>
       </div>

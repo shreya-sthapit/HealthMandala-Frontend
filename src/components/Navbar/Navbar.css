@@ -213,3 +213,211 @@
 
 .gnav-dd-logout { color: #ef4444; }
 .gnav-dd-logout:hover { background: #fef2f2; color: #dc2626; }
+
+
+/* ============================================
+   NOTIFICATION BELL + DROPDOWN
+   ============================================ */
+
+.gnav-bell-wrapper {
+  position: relative;
+}
+
+.gnav-bell {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem;
+  border-radius: 8px;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.gnav-bell:hover {
+  background: #f0fdfa;
+  color: var(--primary-color);
+}
+
+.gnav-bell-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  line-height: 1;
+  border: 2px solid #fff;
+}
+
+/* Dropdown — same style as .gnav-dropdown but wider */
+.notif-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 340px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.13), 0 2px 8px rgba(0,0,0,0.06);
+  border: 1px solid #e8f5f3;
+  z-index: 2000;
+  overflow: hidden;
+  animation: ddFadeIn 0.18s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Arrow pointer */
+.notif-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 14px;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border-left: 1px solid #e8f5f3;
+  border-top: 1px solid #e8f5f3;
+  transform: rotate(45deg);
+  z-index: 1;
+}
+
+.notif-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.notif-dropdown-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.notif-dropdown-count {
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.notif-dropdown-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 280px;
+}
+
+.notif-dropdown-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f8fafc;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.notif-dropdown-item:hover {
+  background: #f0fdfa;
+}
+
+.notif-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.notif-dropdown-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #e0f2fe;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.notif-dropdown-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-dropdown-item-title {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.15rem;
+  line-height: 1.3;
+}
+
+.notif-dropdown-item-detail {
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notif-dropdown-time {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.notif-dropdown-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  gap: 0.6rem;
+  color: #94a3b8;
+  font-size: 0.83rem;
+}
+
+.notif-dropdown-view-all {
+  padding: 0.75rem 1rem;
+  border: none;
+  border-top: 1px solid #f1f5f9;
+  background: #ffffff;
+  color: var(--primary-color);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  width: 100%;
+  text-align: center;
+}
+
+.notif-dropdown-view-all:hover {
+  background: #f0fdfa;
+  color: var(--primary-dark, #028090);
+}
+
+@media (max-width: 480px) {
+  .notif-dropdown {
+    width: 300px;
+    right: -10px;
+  }
+}

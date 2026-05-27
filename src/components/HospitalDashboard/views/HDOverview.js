@@ -27,7 +27,10 @@ export default function HDOverview({ userId, hospital, stats, API, onTabChange }
     setNotifications(notifs);
   }, [userId, stats, API]);
 
-  const statusColor = s => ({ confirmed: 'confirmed', completed: 'completed', cancelled: 'cancelled' }[s] || 'pending');
+  const statusColor = s => ({
+    confirmed: 'confirmed', checked_in: 'confirmed', prescribed: 'confirmed',
+    completed: 'completed', cancelled: 'cancelled'
+  }[s] || 'pending');
 
   const statCards = [
     { label: "Today's Appointments", value: stats?.todayAppointments ?? 0, icon: <CalSVG />, color: 'teal' },

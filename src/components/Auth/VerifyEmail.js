@@ -68,15 +68,14 @@ const VerifyEmail = () => {
       });
       const data = await res.json();
       if (data.success) {
-        // Store token and user — log them in immediately
-        if (data.token) {
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('user', JSON.stringify(data.user));
-          localStorage.setItem('userRole', data.user.role);
+        // Store pending token only — no real User exists yet.
+        // The patient registration form will create the User.
+        if (data.pendingToken) {
+          sessionStorage.setItem('pendingToken', data.pendingToken);
         }
-        const redirectPath = data.user?.role === 'doctor' ? '/doctor-dashboard' : '/register/personal';
+        const redirectPath = data.user?.role === 'doctor' ? '/doctor-dashboard' : '/register';
         navigate(redirectPath, {
-          state: { userId: data.user.id, firstName, lastName, email, role }
+          state: { pendingToken: data.pendingToken, firstName, lastName, email, role }
         });
       } else {
         setError(data.error || 'Invalid OTP. Please try again.');

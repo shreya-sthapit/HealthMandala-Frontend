@@ -15,6 +15,20 @@ const EyeOffIcon = () => (
   </svg>
 );
 
+// Maps a staff role to the correct dashboard route
+const getDashboardRoute = (role, staffRole) => {
+  if (role === 'doctor') return '/doctor-dashboard';
+  if (role === 'hospital_admin' || role === 'admin') return '/hospital-dashboard';
+  // For role === 'staff', use the specific staffRole from the StaffMember record
+  const staffDashboards = {
+    receptionist: '/receptionist-dashboard',
+    pharmacist: '/pharmacist-dashboard',
+    nurse: '/receptionist-dashboard',
+    lab_technician: '/receptionist-dashboard',
+  };
+  return staffDashboards[staffRole] || staffDashboards[role] || '/hospital-dashboard';
+};
+
 const DoctorAuth = () => {
   const navigate = useNavigate();
   const [loginData, setLoginData] = useState({ email: '', phone: '', password: '' });
@@ -29,17 +43,48 @@ const DoctorAuth = () => {
       const body = { password: loginData.password };
       if (loginMethod === 'email') body.email = loginData.email;
       else body.phone = `+977${loginData.phone}`;
+
       const res = await fetch('http://localhost:5001/api/auth/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       const data = await res.json();
+
       if (data.success) {
+        const allowedRoles = ['doctor', 'staff', 'hospital_admin', 'admin'];
+        if (!allowedRoles.includes(data.user.role)) {
+          setError('This login is for doctors and hospital staff only.');
+          setLoading(false);
+          return;
+        }
+
         localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        localStorage.setItem('userRole', data.user.role);
-        if (data.user.role === 'doctor') navigate('/doctor-dashboard');
-        else setError('This account is not registered as a doctor.');
-      } else { setError(data.error || 'Login failed. Please try again.'); }
+        let enrichedUser = { ...data.user };
+        let finalRole = data.user.role;
+
+        // For staff, fetch their specific role (receptionist/pharmacist/etc.)
+        if (data.user.role === 'staff') {
+          try {
+            const staffRes = await fetch(
+              `http://localhost:5001/api/hospital-dashboard/staff/by-user/${data.user.id}`,
+              { headers: { Authorization: `Bearer ${data.token}` } }
+            );
+            const staffData = await staffRes.json();
+            if (staffData.success && staffData.staff) {
+              enrichedUser.hospitalId = staffData.staff.hospitalId;
+              enrichedUser.hospitalName = staffData.staff.currentHospital?.[0] || '';
+              enrichedUser.staffRole = staffData.staff.role;
+              finalRole = staffData.staff.role; // e.g. 'receptionist'
+            }
+          } catch { /* enrichment failed — proceed with base role */ }
+        }
+
+        localStorage.setItem('user', JSON.stringify(enrichedUser));
+        localStorage.setItem('userRole', finalRole);
+
+        navigate(getDashboardRoute(data.user.role, finalRole));
+      } else {
+        setError(data.error || 'Login failed. Please try again.');
+      }
     } catch { setError('Unable to connect to server.'); }
     finally { setLoading(false); }
   };
@@ -51,8 +96,8 @@ const DoctorAuth = () => {
         {/* ── Teal left panel ── */}
         <div className="ap-overlay-panel" style={{ left: 0, borderRadius: '20px 0 0 20px' }}>
           <div className="ap-overlay-left" style={{ opacity: 1, transform: 'translateX(0)', pointerEvents: 'all' }}>
-            <h2>Welcome Back, Doctor!</h2>
-            <p>Sign in to manage your appointments and patients.</p>
+            <h2>Welcome Back!</h2>
+            <p>Sign in to access your dashboard and manage your daily tasks.</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', width: '100%', maxWidth: '220px' }}>
               {['Manage appointments', 'View patient records', 'Update your schedule'].map(item => (
                 <div key={item} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: 'rgba(255,255,255,0.9)' }}>
@@ -66,8 +111,11 @@ const DoctorAuth = () => {
 
         {/* ── White right form panel ── */}
         <div className="ap-form-panel ap-signup-panel" style={{ opacity: 1, transform: 'translateX(0)', pointerEvents: 'all', justifyContent: 'center', paddingTop: '3rem', paddingBottom: '3rem' }}>
-          <h2>Doctor Sign In</h2>
-          
+          <h2>Staff Sign In</h2>
+          <p style={{ color: '#64748b', fontSize: '0.84rem', marginBottom: '1rem', width: '100%', maxWidth: 420 }}>
+            For doctors, receptionists, pharmacists &amp; other hospital staff.
+          </p>
+
           <div className="ap-method-toggle">
             <button className={loginMethod === 'email' ? 'active' : ''} onClick={() => setLoginMethod('email')}>Email</button>
             <button className={loginMethod === 'phone' ? 'active' : ''} onClick={() => setLoginMethod('phone')}>Phone</button>
@@ -90,12 +138,12 @@ const DoctorAuth = () => {
                 </div>
               </div>
             )}
-            
+
             <div className="ap-float">
               <input type={showPwd ? 'text' : 'password'} placeholder=" "
-                value={loginData.password} 
-                onChange={e => { setLoginData({ ...loginData, password: e.target.value }); setError(''); }} 
-                required 
+                value={loginData.password}
+                onChange={e => { setLoginData({ ...loginData, password: e.target.value }); setError(''); }}
+                required
                 style={{ paddingRight: '3rem' }} />
               <label>Password</label>
               <button type="button" className="ap-eye" onClick={() => setShowPwd(v => !v)}>

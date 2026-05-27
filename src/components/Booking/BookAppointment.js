@@ -122,6 +122,8 @@ const BookAppointment = () => {
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  // Track booked slots for doctor card inline display: key = `${doctorId}_${dateStr}`, value = Set of booked time strings
+  const [bookedSlotsMap, setBookedSlotsMap] = useState({});
   const [selectedDependent, setSelectedDependent] = useState(null);
   const [dependentSearch, setDependentSearch] = useState('');
   const [patientInfo, setPatientInfo] = useState(null);
@@ -132,6 +134,7 @@ const BookAppointment = () => {
   const [showAddDependentModal, setShowAddDependentModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedDoctorProfile, setSelectedDoctorProfile] = useState(null);
+  const [patientDetailsExpanded, setPatientDetailsExpanded] = useState(false);
   const [newDependent, setNewDependent] = useState({
     firstName: '',
     lastName: '',
@@ -281,6 +284,17 @@ const BookAppointment = () => {
   }, [doctors, preSelectedDoctor]);
 
   // Fetch available slots when doctor and date are selected
+  // Using a timestamp key to force re-fetch on mount (ensures fresh data after a booking)
+  const [slotFetchKey, setSlotFetchKey] = useState(0);
+
+  // Force a slot re-fetch on mount so that slots booked in a previous session
+  // are immediately reflected as unavailable.
+  useEffect(() => {
+    setSlotFetchKey(k => k + 1);
+    // Also clear the doctor card booked slots cache so inline slots are fresh
+    setBookedSlotsMap({});
+  }, []); // run once on mount
+
   useEffect(() => {
     const fetchAvailableSlots = async () => {
       if (!booking.doctor || !booking.date) {
@@ -320,6 +334,8 @@ const BookAppointment = () => {
         const data = await response.json();
         
         console.log('Slots API response:', data);
+        console.log('Slots array:', data.slots);
+        console.log('First slot in response:', data.slots?.[0]);
         
         if (data.success) {
           console.log('Setting available slots:', data.slots);
@@ -337,7 +353,7 @@ const BookAppointment = () => {
     };
 
     fetchAvailableSlots();
-  }, [booking.doctor, booking.date]);
+  }, [booking.doctor, booking.date, slotFetchKey]);
 
   // Debug: Log doctor object when step 2 is reached
   useEffect(() => {
@@ -493,10 +509,9 @@ const BookAppointment = () => {
           const endMin = toMin(end);
           const breakStartMin = hasBreak ? toMin(breakStart) : null;
           const breakEndMin = hasBreak ? toMin(breakEnd) : null;
+          const interval = preSelectedDoctor.consultationDuration || 10;
           
-          // Generate 10-minute slots, excluding break time
-          for (let m = startMin; m < endMin; m += 10) {
-            // Skip if this slot falls within break time
+          for (let m = startMin; m < endMin; m += interval) {
             if (hasBreak && m >= breakStartMin && m < breakEndMin) {
               continue;
             }
@@ -615,21 +630,41 @@ const BookAppointment = () => {
   const getNextAvailableTime = (doc) => {
     const dates = getNextDates(doc);
     if (dates.length === 0) return null;
-    
-    const firstDate = dates[0];
-    const slots = getTimeSlots(doc, firstDate);
-    if (slots.length === 0) return null;
-    
+
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = monthNames[firstDate.getMonth()];
-    const day = firstDate.getDate();
-    
-    const [hours, minutes] = slots[0].split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
-    const timeStr = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-    
-    return `${month} ${day} at ${timeStr}`;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+    const docId = doc.id || doc._id;
+
+    for (const date of dates) {
+      const slots = getTimeSlots(doc, date);
+      if (slots.length === 0) continue;
+
+      const dateIso = date.toISOString().split('T')[0];
+      const isToday = dateIso === todayStr;
+      const cacheKey = `${docId}_${dateIso}`;
+      const bookedSet = bookedSlotsMap[cacheKey]; // may be undefined if not yet fetched
+
+      for (const slot of slots) {
+        // Skip past slots when today is selected
+        if (isToday) {
+          const [h, m] = slot.split(':').map(Number);
+          if (h * 60 + m <= nowMinutes) continue;
+        }
+        // Skip booked slots (only when cache is available)
+        if (bookedSet && bookedSet.has(slot)) continue;
+
+        const month = monthNames[date.getMonth()];
+        const day = date.getDate();
+        const [hours, minutes] = slot.split(':').map(Number);
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
+        const timeStr = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+        return `${month} ${day} at ${timeStr}`;
+      }
+    }
+
+    return null;
   };
 
   const getTimeSlots = (doc, date) => {
@@ -669,8 +704,9 @@ const BookAppointment = () => {
     const endMin = toMin(end);
     const breakStartMin = hasBreak ? toMin(breakStart) : null;
     const breakEndMin = hasBreak ? toMin(breakEnd) : null;
+    const interval = doc.consultationDuration || 10;
     
-    for (let m = startMin; m < endMin; m += 10) {
+    for (let m = startMin; m < endMin; m += interval) {
       if (hasBreak && m >= breakStartMin && m < breakEndMin) {
         continue;
       }
@@ -678,6 +714,32 @@ const BookAppointment = () => {
     }
     
     return slots;
+  };
+
+  // Fetch booked slots for a doctor card's inline slot display.
+  // Cache is keyed by doctorId+date; cleared on mount so navigating back always gets fresh data.
+  const fetchCardBookedSlots = async (doctorId, dateStr, hospitalName) => {
+    const key = `${doctorId}_${dateStr}`;
+    if (bookedSlotsMap[key] !== undefined) return; // already fetched this session
+    try {
+      const res = await fetch(
+        `http://localhost:5001/api/doctor/slots/${doctorId}?date=${dateStr}&hospitalName=${encodeURIComponent(hospitalName || '')}`
+      );
+      const data = await res.json();
+      if (data.success && data.slots) {
+        const booked = new Set(
+          data.slots.filter(s => s.isBooked).map(s => s.time)
+        );
+        setBookedSlotsMap(prev => ({ ...prev, [key]: booked }));
+      }
+    } catch (e) {
+      // silent fail
+    }
+  };
+
+  const isCardSlotBooked = (doctorId, dateStr, slotTime) => {
+    const key = `${doctorId}_${dateStr}`;
+    return bookedSlotsMap[key]?.has(slotTime) ?? false;
   };
 
   const handleBookSlot = (doc, date, time) => {
@@ -1076,33 +1138,110 @@ const BookAppointment = () => {
       return;
     }
 
+    console.log('=== HANDLE BOOKING DEBUG ===');
+    console.log('selectedSlot:', selectedSlot);
+    console.log('booking.tokenNumber:', booking.tokenNumber);
+    console.log('booking.appointmentTime:', booking.appointmentTime);
+    console.log('Full booking object:', booking);
+
     try {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
+
+      // Fetch patient profile to get complete details
+      let patientProfile = null;
+      if (userData.id) {
+        try {
+          const profileRes = await fetch(`http://localhost:5001/api/patient/profile/${userData.id}`);
+          const profileData = await profileRes.json();
+          if (profileData.success && profileData.profile) {
+            patientProfile = profileData.profile;
+          }
+        } catch (error) {
+          console.error('Error fetching patient profile:', error);
+        }
+      }
+
+      // Determine the actual patient: self or a dependent
+      let activePatient = null;
+      let isDependent = false;
+      if (selectedDependent && selectedDependent !== 'self') {
+        const dep = dependents.find(d => d._id === selectedDependent);
+        if (dep) {
+          activePatient = dep;
+          isDependent = true;
+        }
+      }
+      if (!activePatient) {
+        activePatient = patientProfile; // fall back to self
+      }
 
       const appointmentData = {
         patientId: userData.id || null,
         doctorId: booking.doctor.id || booking.doctor._id || null,
-        patientName: userData.firstName && userData.lastName ? `${userData.firstName} ${userData.lastName}` : 'Patient Name',
-        patientPhone: userData.phone || '',
-        patientEmail: userData.email || '',
+        // Patient details — use dependent data when a dependent is selected
+        patientName: isDependent
+          ? `${activePatient.firstName} ${activePatient.lastName}`
+          : (patientProfile ? `${patientProfile.firstName} ${patientProfile.lastName}` :
+             (userData.firstName && userData.lastName ? `${userData.firstName} ${userData.lastName}` : 'Patient Name')),
+        patientPhone: isDependent
+          ? (activePatient.phone || activePatient.mobileNumber || '')
+          : (patientProfile?.mobileNumber || userData.phone || ''),
+        patientEmail: isDependent
+          ? (activePatient.email || '')
+          : (patientProfile?.email || userData.email || ''),
+        patientAge: isDependent
+          ? (activePatient.age || null)
+          : (patientProfile?.age || null),
+        patientDOB: isDependent
+          ? (activePatient.dobAD && activePatient.dobAD.trim() ? activePatient.dobAD : null)
+          : (patientProfile?.dateOfBirth || null),
+        patientGender: isDependent
+          ? (activePatient.gender || null)
+          : (patientProfile?.gender || null),
+        patientAddress: isDependent
+          ? `${activePatient.district || ''}, ${activePatient.palika || activePatient.municipality || ''}`.replace(/^,\s*|,\s*$/g, '')
+          : (patientProfile ? `${patientProfile.district || ''}, ${patientProfile.municipality || ''}, ${patientProfile.wardNumber || ''}`.trim() : ''),
+        isForDependent: isDependent,
+        dependentRelationship: isDependent ? (activePatient.relationship || '') : '',
+        // Doctor details
         doctorName: booking.doctor.name || `Dr. ${booking.doctor.firstName} ${booking.doctor.lastName}`,
         doctorSpecialization: booking.doctor.specialty || booking.doctor.specialization,
-        hospital: booking.doctor.hospital || booking.doctor.currentHospital?.[0] || '',
+        doctorExperience: booking.doctor.experience || '',
+        doctorNMCNumber: booking.doctor.nmcNumber || '',
+        doctorQualification: booking.doctor.qualification || '',
+        doctorCurrentlyPracticeAt: Array.isArray(booking.doctor.hospital) ? booking.doctor.hospital[0] : (booking.doctor.hospital || (Array.isArray(booking.doctor.currentHospital) ? booking.doctor.currentHospital[0] : booking.doctor.currentHospital) || ''),
+        hospital: Array.isArray(booking.doctor.hospital) ? booking.doctor.hospital[0] : (booking.doctor.hospital || (Array.isArray(booking.doctor.currentHospital) ? booking.doctor.currentHospital[0] : booking.doctor.currentHospital) || ''),
+        // Appointment details
         appointmentDate: booking.date.full,
-        appointmentTime: selectedSlot,
+        appointmentDay: booking.date.day || '',
+        appointmentTime: selectedSlot || booking.appointmentTime, // Use selectedSlot first, fallback to booking.appointmentTime
         tokenNumber: booking.tokenNumber,
         appointmentType: 'consultation',
         reasonForVisit: booking.reason || 'General consultation',
         consultationFee: booking.doctor.fee || booking.doctor.consultationFee,
-        patientNotes: booking.reason || '',
         paymentMethod: 'khalti',
         paymentStatus: 'pending',
       };
+
+      console.log('=== APPOINTMENT DATA ===');
+      console.log('appointmentTime:', appointmentData.appointmentTime);
+      console.log('tokenNumber:', appointmentData.tokenNumber);
+      console.log('selectedSlot:', selectedSlot);
+      console.log('booking.appointmentTime:', booking.appointmentTime);
+      console.log('Full appointmentData:', appointmentData);
 
       // Amount in paisa (Rs × 100)
       const amountPaisa = Math.round((booking.doctor.fee || 0) * 100);
       const orderId = `APPT-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
       const returnUrl = `${window.location.origin}/khalti-return`;
+
+      console.log('Initiating Khalti payment with:', {
+        amount: amountPaisa,
+        orderId,
+        orderName: `Appointment with ${booking.doctor.name}`,
+        customerName: appointmentData.patientName,
+        returnUrl,
+      });
 
       // Initiate Khalti payment via backend
       const initiateRes = await fetch('http://localhost:5001/api/khalti/initiate', {
@@ -1119,17 +1258,33 @@ const BookAppointment = () => {
         }),
       });
 
+      console.log('Khalti initiate response status:', initiateRes.status);
       const initiateData = await initiateRes.json();
+      console.log('Khalti initiate response data:', initiateData);
 
       if (!initiateData.success || !initiateData.paymentUrl) {
-        alert(initiateData.error || 'Failed to initiate Khalti payment. Please try again.');
+        const errorMsg = initiateData.error || initiateData.details?.detail || 'Failed to initiate Khalti payment. Please try again.';
+        console.error('Khalti initiation failed:', errorMsg, initiateData);
+        alert(errorMsg);
         return;
       }
 
       // Save appointment data to sessionStorage so KhaltiReturn can complete the booking
       sessionStorage.setItem('khaltiPendingAppointment', JSON.stringify({
         appointmentData,
-        bookingState: { ...booking, appointmentTime: selectedSlot },
+        bookingState: {
+          ...booking,
+          appointmentTime: selectedSlot,
+          // Pass the active patient info so BookingConfirmed can display the correct person
+          activePatient: {
+            name: appointmentData.patientName,
+            phone: appointmentData.patientPhone,
+            age: appointmentData.patientAge,
+            gender: appointmentData.patientGender,
+            isDependent: isDependent,
+            relationship: appointmentData.dependentRelationship,
+          },
+        },
       }));
 
       // Redirect to Khalti payment page
@@ -1137,7 +1292,7 @@ const BookAppointment = () => {
 
     } catch (error) {
       console.error('Booking error:', error);
-      alert('Failed to initiate payment. Please check your connection and try again.');
+      alert(`Failed to initiate payment: ${error.message}. Please check your connection and try again.`);
     }
   };
 
@@ -1732,8 +1887,8 @@ const BookAppointment = () => {
                                   const formatTime12h = (time24) => {
                                     const [hours, minutes] = time24.split(':').map(Number);
                                     const period = hours >= 12 ? 'PM' : 'AM';
-                                    const hours12 = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
-                                    return `${String(hours12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${period}`;
+                                    const hours12 = hours % 12 || 12;
+                                    return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
                                   };
                                   
                                   // Get schedule from hospitalSchedules or flat schedule
@@ -1755,14 +1910,41 @@ const BookAppointment = () => {
                                   }
                                   
                                   const slots = getTimeSlots(doc, date);
-                                  const displaySlots = slots.slice(0, 4);
                                   const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                  const dateIso = date.toISOString().split('T')[0];
+                                  const docId = doc.id || doc._id;
+                                  const hospitalNameStr = Array.isArray(doc.hospital) ? doc.hospital[0] : (doc.hospital || '');
+                                  // Trigger fetch for this doctor+date (lazy, cached per session)
+                                  fetchCardBookedSlots(docId, dateIso, hospitalNameStr);
+
+                                  const todayIso = new Date().toISOString().split('T')[0];
+                                  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+                                  const isToday = dateIso === todayIso;
+
+                                  // Show first 4 slots always; mark each as booked or past (disabled)
+                                  const displaySlots = slots.slice(0, 4).map(s => {
+                                    const isBooked = isCardSlotBooked(docId, dateIso, s);
+                                    const isPast = isToday && (() => {
+                                      const [h, m] = s.split(':').map(Number);
+                                      return h * 60 + m <= nowMinutes;
+                                    })();
+                                    return { slot: s, disabled: isBooked || isPast };
+                                  });
+                                  // Count remaining selectable slots beyond the first 4
+                                  const remainingCardCount = slots.slice(4).filter(s => {
+                                    if (isCardSlotBooked(docId, dateIso, s)) return false;
+                                    if (isToday) {
+                                      const [h, m] = s.split(':').map(Number);
+                                      if (h * 60 + m <= nowMinutes) return false;
+                                    }
+                                    return true;
+                                  }).length;
 
                                   return (
                                     <div key={di} className="schedule-row" style={{
                                       display: 'grid',
-                                      gridTemplateColumns: '80px 200px 1fr',
-                                      gap: '1.5rem',
+                                      gridTemplateColumns: '80px 160px 1fr',
+                                      gap: '1rem',
                                       alignItems: 'center',
                                       padding: '0.4rem 0',
                                       borderBottom: di < dates.length - 1 ? '1px solid #f1f5f9' : 'none'
@@ -1782,37 +1964,43 @@ const BookAppointment = () => {
                                       <div className="sched-slots" style={{
                                         display: 'flex',
                                         gap: '0.4rem',
-                                        flexWrap: 'wrap',
+                                        flexWrap: 'nowrap',
                                         alignItems: 'center'
                                       }}>
-                                        {displaySlots.map(slot => (
+                                        {displaySlots.map(({ slot: slotTime, disabled }) => (
                                           <button
-                                            key={slot}
-                                            className="slot-btn"
-                                            onClick={() => handleBookSlot(doc, date, slot)}
+                                            key={slotTime}
+                                            className={`slot-btn${disabled ? ' booked' : ''}`}
+                                            disabled={disabled}
+                                            onClick={() => !disabled && handleBookSlot(doc, date, slotTime)}
                                             style={{
-                                              padding: '0 0.9rem',
-                                              background: 'var(--primary-color)',
-                                              color: 'white',
-                                              border: 'none',
+                                              padding: '0.6rem 0',
+                                              width: '90px',
+                                              background: disabled ? '#f1f5f9' : '#f8f9fa',
+                                              color: disabled ? '#b0bec5' : '#475569',
+                                              border: '2px solid transparent',
                                               borderRadius: '8px',
-                                              fontSize: '0.8rem',
+                                              fontSize: '0.85rem',
                                               fontWeight: 600,
-                                              cursor: 'pointer',
-                                              boxShadow: '0 2px 4px rgba(0, 168, 150, 0.2)',
-                                              height: '32px',
+                                              cursor: disabled ? 'not-allowed' : 'pointer',
+                                              opacity: disabled ? 0.5 : 1,
+                                              boxShadow: 'none',
+                                              height: '36px',
                                               display: 'inline-flex',
                                               alignItems: 'center',
                                               justifyContent: 'center',
-                                              lineHeight: 1
+                                              lineHeight: 1,
+                                              flexShrink: 0,
+                                              whiteSpace: 'nowrap',
+                                              pointerEvents: disabled ? 'none' : 'auto',
                                             }}
                                           >
-                                            {formatTime12h(slot)}
+                                            {formatTime12h(slotTime)}
                                           </button>
                                         ))}
-                                        {slots.length > 4 && (
-                                          <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '0.25rem' }}>
-                                            +{slots.length - 4} more
+                                        {remainingCardCount > 0 && (
+                                          <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '0.25rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                                            +{remainingCardCount} more
                                           </span>
                                         )}
                                       </div>
@@ -2128,17 +2316,31 @@ const BookAppointment = () => {
                               const morning = []; // 5 AM - 11:59 AM
                               const afternoon = []; // 12 PM - 4:59 PM
                               const evening = []; // 5 PM onwards
+
+                              // For today, mark slots whose time has already passed
+                              const isSelectedToday = booking.date?.full === new Date().toISOString().split('T')[0];
+                              const nowMinutes = isSelectedToday
+                                ? new Date().getHours() * 60 + new Date().getMinutes()
+                                : -1;
                               
-                              availableSlots.forEach((slot, originalIndex) => {
-                                const [hours] = slot.split(':');
-                                const hour = parseInt(hours);
+                              availableSlots.forEach((slotObj, originalIndex) => {
+                                // Handle both string format (old) and object format (new)
+                                const slot = typeof slotObj === 'string' ? slotObj : slotObj.time;
+                                const isBooked = (typeof slotObj === 'object' && slotObj !== null) ? slotObj.isBooked : false;
+
+                                // Disable slots in the past when today is selected
+                                const [slotHour, slotMin] = slot.split(':').map(Number);
+                                const slotMinutes = slotHour * 60 + slotMin;
+                                const isPast = isSelectedToday && slotMinutes <= nowMinutes;
+                                
+                                const hour = slotHour;
                                 
                                 if (hour >= 5 && hour < 12) {
-                                  morning.push({ slot, originalIndex });
+                                  morning.push({ slot, originalIndex, isBooked, isPast });
                                 } else if (hour >= 12 && hour < 17) {
-                                  afternoon.push({ slot, originalIndex });
+                                  afternoon.push({ slot, originalIndex, isBooked, isPast });
                                 } else {
-                                  evening.push({ slot, originalIndex });
+                                  evening.push({ slot, originalIndex, isBooked, isPast });
                                 }
                               });
                               
@@ -2148,7 +2350,7 @@ const BookAppointment = () => {
                                     <div className="time-slot-group">
                                       <h4 className="time-group-heading">Morning</h4>
                                       <div className="time-slots">
-                                        {morning.map(({ slot, originalIndex }) => {
+                                        {morning.map(({ slot, originalIndex, isBooked, isPast }) => {
                                           const [hours, minutes] = slot.split(':');
                                           const hour = parseInt(hours);
                                           const ampm = hour >= 12 ? 'PM' : 'AM';
@@ -2156,12 +2358,18 @@ const BookAppointment = () => {
                                           const formattedTime = `${String(hour12).padStart(2, '0')}:${minutes} ${ampm}`;
                                           const tokenNumber = originalIndex + 1;
                                           
+                                          // Debug log for each button
+                                          console.log(`Rendering button for ${formattedTime}:`, { slot, isBooked, disabled: isBooked });
+                                          
                                           return (
                                             <button
                                               key={slot}
                                               type="button"
-                                              className={`time-slot ${selectedSlot === slot ? 'selected' : ''}`}
+                                              className={`time-slot ${selectedSlot === slot ? 'selected' : ''} ${isBooked || isPast ? 'booked' : ''}`}
+                                              disabled={isBooked || isPast}
                                               onClick={() => {
+                                                if (isBooked || isPast) return;
+                                                
                                                 // Check if user is logged in
                                                 const token = localStorage.getItem('token');
                                                 if (!token) {
@@ -2202,7 +2410,7 @@ const BookAppointment = () => {
                                     <div className="time-slot-group">
                                       <h4 className="time-group-heading">Afternoon</h4>
                                       <div className="time-slots">
-                                        {afternoon.map(({ slot, originalIndex }) => {
+                                        {afternoon.map(({ slot, originalIndex, isBooked, isPast }) => {
                                           const [hours, minutes] = slot.split(':');
                                           const hour = parseInt(hours);
                                           const ampm = hour >= 12 ? 'PM' : 'AM';
@@ -2214,8 +2422,11 @@ const BookAppointment = () => {
                                             <button
                                               key={slot}
                                               type="button"
-                                              className={`time-slot ${selectedSlot === slot ? 'selected' : ''}`}
+                                              className={`time-slot ${selectedSlot === slot ? 'selected' : ''} ${isBooked || isPast ? 'booked' : ''}`}
+                                              disabled={isBooked || isPast}
                                               onClick={() => {
+                                                if (isBooked || isPast) return;
+                                                
                                                 // Check if user is logged in
                                                 const token = localStorage.getItem('token');
                                                 if (!token) {
@@ -2256,7 +2467,7 @@ const BookAppointment = () => {
                                     <div className="time-slot-group">
                                       <h4 className="time-group-heading">Evening</h4>
                                       <div className="time-slots">
-                                        {evening.map(({ slot, originalIndex }) => {
+                                        {evening.map(({ slot, originalIndex, isBooked, isPast }) => {
                                           const [hours, minutes] = slot.split(':');
                                           const hour = parseInt(hours);
                                           const ampm = hour >= 12 ? 'PM' : 'AM';
@@ -2268,8 +2479,11 @@ const BookAppointment = () => {
                                             <button
                                               key={slot}
                                               type="button"
-                                              className={`time-slot ${selectedSlot === slot ? 'selected' : ''}`}
+                                              className={`time-slot ${selectedSlot === slot ? 'selected' : ''} ${isBooked || isPast ? 'booked' : ''}`}
+                                              disabled={isBooked || isPast}
                                               onClick={() => {
+                                                if (isBooked || isPast) return;
+                                                
                                                 // Check if user is logged in
                                                 const token = localStorage.getItem('token');
                                                 if (!token) {
@@ -2543,170 +2757,133 @@ const BookAppointment = () => {
 
             {/* Step 5: Confirmation */}
             {step === 5 && (
-              <div className="step5-container">
-                <div className="step5-header">
-                  <div className="step5-icon">✓</div>
-                  <h2>Confirm Your Appointment</h2>
-                  <p>Please review your booking details before proceeding to payment</p>
-                </div>
-
-                <div className="step5-content">
-                  {/* Left Column - Doctor & Appointment Details */}
-                  <div className="step5-left">
-                    {/* Doctor Card */}
-                    <div className="step5-card">
-                      <h3 className="step5-card-title">Doctor Information</h3>
-                      <div className="step5-doctor-info">
-                        <div className="step5-doctor-avatar">
-                          {booking.doctor?.name?.charAt(0) || 'D'}
+              <div className="step4-container">
+                <div className="step4-layout">
+                  {/* LEFT COLUMN - Doctor Details (Same as Step 4) */}
+                  <div className="step4-left">
+                    {/* Doctor Information Card */}
+                    <div className="step4-doctor-card">
+                      <div className="step4-doctor-header">
+                        <div className="step4-doctor-avatar">
+                          {booking.doctor?.profilePhoto ? (
+                            <img 
+                              src={`http://localhost:5001/${booking.doctor.profilePhoto.replace(/\\/g, '/').replace(/^backend\//, '')}`}
+                              alt={booking.doctor.name}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <div 
+                            className="step4-avatar-fallback"
+                            style={{ display: booking.doctor?.profilePhoto ? 'none' : 'flex' }}
+                          >
+                            {booking.doctor?.name?.split(' ')[1]?.[0] || 'D'}
+                          </div>
                         </div>
-                        <div className="step5-doctor-details">
-                          <h4>{booking.doctor?.name}</h4>
-                          <p>{booking.doctor?.specialty}</p>
+                        <div className="step4-doctor-info">
+                          <h3>{booking.doctor?.name}</h3>
+                          <p className="step4-specialty">{booking.doctor?.specialty}</p>
+                          <p className="step4-detail">Experience: {booking.doctor?.experience || 'N/A'}</p>
+                          <p className="step4-detail">NMC Number: {booking.doctor?.nmcNumber || 'N/A'}</p>
+                          <p className="step4-detail">Qualification: {booking.doctor?.qualification || 'N/A'}</p>
                         </div>
                       </div>
+                      <p className="step4-hospital">
+                        Currently Practice at: {
+                          (Array.isArray(booking.doctor?.hospital) 
+                            ? booking.doctor.hospital[0] 
+                            : booking.doctor?.hospital) || 
+                          (Array.isArray(booking.doctor?.currentHospital) 
+                            ? booking.doctor.currentHospital[0] 
+                            : booking.doctor?.currentHospital) || 'Not specified'
+                        }
+                      </p>
                     </div>
 
-                    {/* Appointment Details Card */}
-                    <div className="step5-card">
-                      <h3 className="step5-card-title">Appointment Details</h3>
-                      <div className="step5-info-grid">
-                        <div className="step5-info-item">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                            <line x1="16" y1="2" x2="16" y2="6"/>
-                            <line x1="8" y1="2" x2="8" y2="6"/>
-                            <line x1="3" y1="10" x2="21" y2="10"/>
-                          </svg>
-                          <div>
-                            <label>Date</label>
-                            <span>{booking.date?.day}, {booking.date?.date} {booking.date?.month}</span>
-                          </div>
+                    {/* Booking Details Grid */}
+                    <div className="step4-booking-grid">
+                      <div className="step4-grid-item">
+                        <div className="step4-grid-label">Date</div>
+                        <div className="step4-grid-value">
+                          {booking.date ? 
+                            `${booking.date.month} ${booking.date.date}, ${new Date().getFullYear()}` : 
+                            'Not selected'
+                          }
                         </div>
-                        <div className="step5-info-item">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="12 6 12 12 16 14"/>
-                          </svg>
-                          <div>
-                            <label>Time</label>
-                            <span>
-                              {selectedSlot ? (() => {
-                                const [hours, minutes] = selectedSlot.split(':');
-                                const hour = parseInt(hours);
-                                const ampm = hour >= 12 ? 'PM' : 'AM';
-                                const hour12 = hour % 12 || 12;
-                                return `${hour12}:${minutes} ${ampm}`;
-                              })() : 'Not selected'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="step5-info-item">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <line x1="16" y1="13" x2="8" y2="13"/>
-                            <line x1="16" y1="17" x2="8" y2="17"/>
-                            <polyline points="10 9 9 9 8 9"/>
-                          </svg>
-                          <div>
-                            <label>Token Number</label>
-                            <span>#{booking.tokenNumber}</span>
-                          </div>
-                        </div>
-                        <div className="step5-info-item">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="12 6 12 12 16 14"/>
-                          </svg>
-                          <div>
-                            <label>Working Hours</label>
-                            <span>{booking.workingHours}</span>
-                          </div>
+                        <div className="step4-grid-subvalue">
+                          {booking.date?.dayName || ''}
                         </div>
                       </div>
+                      
+                      <div className="step4-grid-item">
+                        <div className="step4-grid-label">Consultation Time</div>
+                        <div className="step4-grid-value">
+                          {selectedSlot ? (() => {
+                            const [hours, minutes] = selectedSlot.split(':');
+                            const hour = parseInt(hours);
+                            const ampm = hour >= 12 ? 'PM' : 'AM';
+                            const hour12 = hour % 12 || 12;
+                            return `${hour12}:${minutes} ${ampm}`;
+                          })() : 'Not selected'}
+                        </div>
+                      </div>
+                      
+                      <div className="step4-grid-item">
+                        <div className="step4-grid-label">Consultation Fee</div>
+                        <div className="step4-grid-value">Rs. {booking.doctor?.fee || booking.doctor?.consultationFee || 0}</div>
+                      </div>
+                      
+                      <div className="step4-grid-item">
+                        <div className="step4-grid-label">Token No:</div>
+                        <div className="step4-grid-value">#{booking.tokenNumber || 'N/A'}</div>
+                      </div>
                     </div>
+                  </div>
 
-                    {/* Patient Details Card */}
-                    <div className="step5-card">
-                      <h3 className="step5-card-title">Patient Details</h3>
-                      <div className="step5-info-grid">
+                  {/* RIGHT COLUMN - Patient Details & Payment */}
+                  <div className="step4-right">
+                    {/* Patient Details Section */}
+                    <div className="step5-patient-section">
+                      <div 
+                        className="step5-patient-header"
+                        onClick={() => setPatientDetailsExpanded(!patientDetailsExpanded)}
+                      >
+                        <h2>Patient Details</h2>
+                        <svg 
+                          width="20" 
+                          height="20" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2"
+                          style={{ 
+                            transform: patientDetailsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.3s'
+                          }}
+                        >
+                          <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                      </div>
+                      
+                      {/* Always visible: Name and Age */}
+                      <div className="step5-patient-summary">
                         {selectedDependent === 'self' ? (
                           <>
-                            <div className="step5-info-item">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                              </svg>
-                              <div>
-                                <label>Full Name</label>
-                                <span>{patientInfo ? `${patientInfo.firstName} ${patientInfo.lastName}` : 'Loading...'}</span>
-                              </div>
+                            <div className="step5-summary-item">
+                              <span className="step5-summary-label">Name:</span>
+                              <span className="step5-summary-value">
+                                {patientInfo ? `${patientInfo.firstName} ${patientInfo.lastName}` : 'Loading...'}
+                              </span>
                             </div>
-                            <div className="step5-info-item">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
-                              </svg>
-                              <div>
-                                <label>Age</label>
-                                <span>
-                                  {patientInfo?.dateOfBirth 
-                                    ? Math.floor((new Date() - new Date(patientInfo.dateOfBirth)) / (365.25 * 24 * 60 * 60 * 1000))
-                                    : 'N/A'}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="step5-info-item">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
-                              </svg>
-                              <div>
-                                <label>Date of Birth</label>
-                                <span>
-                                  {patientInfo?.dateOfBirth 
-                                    ? new Date(patientInfo.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                                    : 'N/A'}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="step5-info-item">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                              </svg>
-                              <div>
-                                <label>Gender</label>
-                                <span>{patientInfo?.gender ? patientInfo.gender.charAt(0).toUpperCase() + patientInfo.gender.slice(1) : 'N/A'}</span>
-                              </div>
-                            </div>
-                            <div className="step5-info-item">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-                              </svg>
-                              <div>
-                                <label>Mobile No</label>
-                                <span>{patientInfo?.phone || 'N/A'}</span>
-                              </div>
-                            </div>
-                            <div className="step5-info-item">
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                                <circle cx="12" cy="10" r="3"/>
-                              </svg>
-                              <div>
-                                <label>Address</label>
-                                <span>
-                                  {patientInfo?.address 
-                                    ? `${patientInfo.address.street || ''}, ${patientInfo.address.city || ''}, ${patientInfo.address.district || ''}, ${patientInfo.address.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',')
-                                    : 'N/A'}
-                                </span>
-                              </div>
+                            <div className="step5-summary-item">
+                              <span className="step5-summary-label">Age:</span>
+                              <span className="step5-summary-value">
+                                {patientInfo?.dateOfBirth 
+                                  ? Math.floor((new Date() - new Date(patientInfo.dateOfBirth)) / (365.25 * 24 * 60 * 60 * 1000))
+                                  : 'N/A'}
+                              </span>
                             </div>
                           </>
                         ) : (
@@ -2716,72 +2893,13 @@ const BookAppointment = () => {
                               if (!dependent) return null;
                               return (
                                 <>
-                                  <div className="step5-info-item">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                      <circle cx="12" cy="7" r="4"/>
-                                    </svg>
-                                    <div>
-                                      <label>Full Name</label>
-                                      <span>{`${dependent.firstName} ${dependent.lastName}`}</span>
-                                    </div>
+                                  <div className="step5-summary-item">
+                                    <span className="step5-summary-label">Name:</span>
+                                    <span className="step5-summary-value">{`${dependent.firstName} ${dependent.lastName}`}</span>
                                   </div>
-                                  <div className="step5-info-item">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                      <line x1="16" y1="2" x2="16" y2="6"/>
-                                      <line x1="8" y1="2" x2="8" y2="6"/>
-                                      <line x1="3" y1="10" x2="21" y2="10"/>
-                                    </svg>
-                                    <div>
-                                      <label>Age</label>
-                                      <span>{dependent.age || 'N/A'}</span>
-                                    </div>
-                                  </div>
-                                  <div className="step5-info-item">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                      <line x1="16" y1="2" x2="16" y2="6"/>
-                                      <line x1="8" y1="2" x2="8" y2="6"/>
-                                      <line x1="3" y1="10" x2="21" y2="10"/>
-                                    </svg>
-                                    <div>
-                                      <label>Date of Birth</label>
-                                      <span>{dependent.dobAD || 'N/A'}</span>
-                                    </div>
-                                  </div>
-                                  <div className="step5-info-item">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                      <circle cx="12" cy="7" r="4"/>
-                                    </svg>
-                                    <div>
-                                      <label>Gender</label>
-                                      <span>{dependent.gender || 'N/A'}</span>
-                                    </div>
-                                  </div>
-                                  <div className="step5-info-item">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-                                    </svg>
-                                    <div>
-                                      <label>Mobile No</label>
-                                      <span>{dependent.phone || 'N/A'}</span>
-                                    </div>
-                                  </div>
-                                  <div className="step5-info-item">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                                      <circle cx="12" cy="10" r="3"/>
-                                    </svg>
-                                    <div>
-                                      <label>Address</label>
-                                      <span>
-                                        {dependent.address 
-                                          ? dependent.address
-                                          : `${dependent.palika || ''}, ${dependent.district || ''}, ${dependent.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',') || 'N/A'}
-                                      </span>
-                                    </div>
+                                  <div className="step5-summary-item">
+                                    <span className="step5-summary-label">Age:</span>
+                                    <span className="step5-summary-value">{dependent.age || 'N/A'}</span>
                                   </div>
                                 </>
                               );
@@ -2789,60 +2907,110 @@ const BookAppointment = () => {
                           </>
                         )}
                       </div>
+
+                      {/* Expandable: Full Details */}
+                      {patientDetailsExpanded && (
+                        <div className="step5-patient-info">
+                          {selectedDependent === 'self' ? (
+                            <>
+                              <div className="step5-detail-row">
+                                <span className="step5-label">Date of Birth:</span>
+                                <span className="step5-value">
+                                  {patientInfo?.dateOfBirth 
+                                    ? new Date(patientInfo.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                                    : 'N/A'}
+                                </span>
+                              </div>
+                              <div className="step5-detail-row">
+                                <span className="step5-label">Gender:</span>
+                                <span className="step5-value">{patientInfo?.gender ? patientInfo.gender.charAt(0).toUpperCase() + patientInfo.gender.slice(1) : 'N/A'}</span>
+                              </div>
+                              <div className="step5-detail-row">
+                                <span className="step5-label">Mobile No:</span>
+                                <span className="step5-value">{patientInfo?.phone || 'N/A'}</span>
+                              </div>
+                              <div className="step5-detail-row">
+                                <span className="step5-label">Address:</span>
+                                <span className="step5-value">
+                                  {patientInfo?.address 
+                                    ? `${patientInfo.address.street || ''}, ${patientInfo.address.city || ''}, ${patientInfo.address.district || ''}, ${patientInfo.address.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',')
+                                    : 'N/A'}
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              {(() => {
+                                const dependent = dependents.find(dep => dep._id === selectedDependent);
+                                if (!dependent) return null;
+                                return (
+                                  <>
+                                    <div className="step5-detail-row">
+                                      <span className="step5-label">Date of Birth:</span>
+                                      <span className="step5-value">{dependent.dobAD || 'N/A'}</span>
+                                    </div>
+                                    <div className="step5-detail-row">
+                                      <span className="step5-label">Gender:</span>
+                                      <span className="step5-value">{dependent.gender || 'N/A'}</span>
+                                    </div>
+                                    <div className="step5-detail-row">
+                                      <span className="step5-label">Mobile No:</span>
+                                      <span className="step5-value">{dependent.phone || 'N/A'}</span>
+                                    </div>
+                                    <div className="step5-detail-row">
+                                      <span className="step5-label">Address:</span>
+                                      <span className="step5-value">
+                                        {dependent.address 
+                                          ? dependent.address
+                                          : `${dependent.palika || ''}, ${dependent.district || ''}, ${dependent.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',') || 'N/A'}
+                                      </span>
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
 
-                  {/* Right Column - Payment */}
-                  <div className="step5-right">
-                    {/* Payment Summary Card */}
-                    <div className="step5-card step5-payment-card">
-                      <h3 className="step5-card-title">Payment Summary</h3>
-                      <div className="step5-payment-details">
-                        <div className="step5-payment-row">
-                          <span>Consultation Fee</span>
-                          <span>Rs. {booking.doctor?.fee}</span>
-                        </div>
-                        <div className="step5-payment-row">
-                          <span>Service Charge</span>
-                          <span>Rs. 0</span>
-                        </div>
-                        <div className="step5-payment-divider"></div>
-                        <div className="step5-payment-row step5-payment-total">
+                    {/* Payment Method Section */}
+                    <div className="step5-payment-section">
+                      <h2>Payment Method</h2>
+                      <div className="step5-khalti-card">
+                        <img
+                          src="https://web.khalti.com/static/img/logo1.png"
+                          alt="Khalti"
+                          onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                        />
+                        <div className="step5-khalti-fallback" style={{ display: 'none' }}>Khalti</div>
+                        <div className="step5-radio-checked">✓</div>
+                      </div>
+                      <p className="step5-payment-note">Pay securely with Khalti digital wallet</p>
+                      
+                      {/* Payment Summary */}
+                      <div className="step5-payment-summary">
+                        <div className="step5-summary-row step5-summary-total">
                           <span>Total Amount</span>
-                          <span>Rs. {booking.doctor?.fee}</span>
+                          <span>Rs. {booking.doctor?.fee || 0}</span>
                         </div>
                       </div>
+                    </div>
 
-                      {/* Payment Method */}
-                      <div className="step5-payment-method">
-                        <h4>Payment Method</h4>
-                        <div className="step5-khalti-option">
-                          <img
-                            src="https://web.khalti.com/static/img/logo1.png"
-                            alt="Khalti"
-                            onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                          />
-                          <div className="step5-khalti-fallback" style={{ display: 'none' }}>Khalti</div>
-                          <div className="step5-radio-checked">✓</div>
-                        </div>
-                        <p className="step5-payment-note">Pay securely with Khalti digital wallet</p>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="step5-actions">
-                        <button
-                          className="step5-btn step5-btn-back"
-                          onClick={() => setStep(step - 1)}
-                        >
-                          ← Go Back
-                        </button>
-                        <button 
-                          className="step5-btn step5-btn-pay" 
-                          onClick={handleBooking}
-                        >
-                          Pay Rs. {booking.doctor?.fee || 0}
-                        </button>
-                      </div>
+                    {/* Action Buttons */}
+                    <div className="step5-actions">
+                      <button
+                        className="step5-btn step5-btn-back"
+                        onClick={() => setStep(step - 1)}
+                      >
+                        ← Go Back
+                      </button>
+                      <button 
+                        className="step5-btn step5-btn-pay" 
+                        onClick={handleBooking}
+                      >
+                        Pay Rs. {booking.doctor?.fee || 0}
+                      </button>
                     </div>
                   </div>
                 </div>

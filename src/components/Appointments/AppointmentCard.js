@@ -1,347 +1,304 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import QRCode from 'qrcode';
+import html2canvas from 'html2canvas';
 import './AppointmentCard.css';
+import '../Booking/Booking.css';
 
 const AppointmentCard = ({ appointment, onClose }) => {
-  const navigate = useNavigate();
-  const [showShareMenu, setShowShareMenu] = useState(false);
+  const cardRef = useRef(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [patient, setPatient] = useState({
+    name: appointment.patientName || 'Patient',
+    id: '',
+    age: '',
+    gender: '',
+    phone: '',
+  });
 
-  const generateQRCode = (text) => {
-    // Using a simple QR code API
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(text)}`;
+  // Build patient ID from stored user data
+  useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    const patientId = `MC-${(userData.id || '000000').slice(-6).toUpperCase()}`;
+
+    // Try to fetch full profile for age/gender
+    const fetchProfile = async () => {
+      try {
+        if (userData.id) {
+          const res = await fetch(`http://localhost:5001/api/patient/profile/${userData.id}`);
+          const data = await res.json();
+          if (data.success && data.profile) {
+            const p = data.profile;
+            const dob = p.dateOfBirth;
+            let age = '';
+            if (dob) {
+              const diff = Date.now() - new Date(dob).getTime();
+              age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+            }
+            setPatient({
+              name: appointment.patientName || `${p.firstName} ${p.lastName}`,
+              id: patientId,
+              age,
+              gender: p.gender || '',
+              phone: p.mobileNumber || userData.phone || '',
+            });
+            return;
+          }
+        }
+      } catch (_) { /* fall through */ }
+
+      setPatient({
+        name: appointment.patientName || `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'Patient',
+        id: patientId,
+        age: '',
+        gender: '',
+        phone: userData.phone || '',
+      });
+    };
+
+    fetchProfile();
+  }, [appointment.patientName]);
+
+  // Generate QR code once patient ID is ready
+  useEffect(() => {
+    if (!patient.id) return;
+    const qrData = JSON.stringify({
+      patientId: patient.id,
+      appointmentId: appointment._id || appointment.id,
+      doctorName: appointment.doctorName,
+      date: appointment.appointmentDate,
+      time: appointment.appointmentTime,
+      tokenNumber: appointment.tokenNumber,
+      paymentStatus: appointment.paymentStatus,
+      hospital: appointment.hospitalName,
+    });
+    QRCode.toDataURL(qrData, { width: 200, margin: 1, color: { dark: '#000000', light: '#FFFFFF' } })
+      .then(setQrCodeUrl)
+      .catch(console.error);
+  }, [patient.id, appointment]);
+
+  const formatDate = () => {
+    if (!appointment.appointmentDate) return '';
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    const d = new Date(appointment.appointmentDate);
+    return `${monthNames[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
   };
 
-  const appointmentId = appointment._id || appointment.id || 'HM' + Date.now();
-  const qrData = `HealthMandala Appointment\nID: ${appointmentId}\nPatient: ${appointment.patientName}\nDoctor: ${appointment.doctorName}\nDate: ${new Date(appointment.appointmentDate).toLocaleDateString()}\nToken: #${appointment.tokenNumber || 'N/A'}`;
+  const formatTime = (time) => {
+    if (!time) return '';
+    const [h, m] = time.split(':');
+    const hour = parseInt(h);
+    return `${hour % 12 || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
+  };
 
-  const handleDownload = () => {
-    // Create a canvas to draw the card
-    const card = document.querySelector('.appointment-card-modal');
-    if (card) {
-      // Simple download approach - in production, use html2canvas or similar
-      alert('Card download feature - In production, this would generate a PDF or image of the card');
+  const getTimeSlot = () => {
+    if (!appointment.appointmentTime) return '';
+    const start = formatTime(appointment.appointmentTime);
+    const [h, m] = appointment.appointmentTime.split(':');
+    const endMin = (parseInt(m) + 10) % 60;
+    const endHour = parseInt(h) + Math.floor((parseInt(m) + 10) / 60);
+    const end = formatTime(`${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`);
+    return `${start} - ${end}`;
+  };
+
+  const downloadCard = async () => {
+    if (!cardRef.current) return;
+    try {
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      const link = document.createElement('a');
+      link.download = `appointment-card-${patient.id}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    } catch (err) {
+      console.error('Download error:', err);
+      alert('Failed to download card. Please try again.');
     }
   };
 
-  const handleShare = (method) => {
-    const shareText = `My appointment with ${appointment.doctorName} on ${new Date(appointment.appointmentDate).toLocaleDateString()} - Token #${appointment.tokenNumber || 'N/A'}`;
-    
-    switch(method) {
-      case 'whatsapp':
-        window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
-        break;
-      case 'email':
-        window.location.href = `mailto:?subject=Appointment Details&body=${encodeURIComponent(shareText)}`;
-        break;
-      case 'copy':
-        navigator.clipboard.writeText(shareText);
-        alert('Appointment details copied to clipboard!');
-        break;
-      default:
-        break;
-    }
-    setShowShareMenu(false);
-  };
-
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'confirmed': return '#10b981';
-      case 'pending': return '#f59e0b';
-      case 'completed': return '#6366f1';
-      case 'cancelled': return '#ef4444';
-      default: return '#6b7280';
-    }
-  };
+  const paymentMethod = appointment.paymentMethod || 'cash';
+  const txnId = appointment.khaltiTransactionId
+    ? `KHL-${appointment.khaltiTransactionId.slice(-8).toUpperCase()}`
+    : appointment.transactionId
+    ? `TXN-${appointment.transactionId.slice(-8).toUpperCase()}`
+    : '';
 
   return (
-    <div className="appointment-card-overlay" onClick={onClose} style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0, 0, 0, 0.7)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000,
-      padding: '1rem',
-      backdropFilter: 'blur(5px)'
-    }}>
-      <div className="appointment-card-modal" onClick={(e) => e.stopPropagation()} style={{
-        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-        borderRadius: '24px',
-        maxWidth: '900px',
-        width: '100%',
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        position: 'relative'
-      }}>
-        <button className="card-close-btn" onClick={onClose} style={{
-          position: 'absolute',
-          top: '1rem',
-          right: '1rem',
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
-          border: 'none',
-          background: 'rgba(0, 0, 0, 0.1)',
-          color: '#1f2937',
-          fontSize: '1.5rem',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10
-        }}>×</button>
-        
-        <div className="card-header" style={{
-          textAlign: 'center',
-          padding: '2rem 2rem 1.5rem',
-          background: 'linear-gradient(135deg, #00a896 0%, #0d9488 100%)',
-          color: 'white',
-          borderRadius: '24px 24px 0 0'
-        }}>
-          <div className="card-logo" style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            marginBottom: '1rem'
-          }}>
-            <img src="/logo.png" alt="HealthMandala" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
-            <span style={{ fontSize: '1.25rem', fontWeight: 600 }}>HealthMandala</span>
-          </div>
-          <h2 style={{ fontSize: '1.75rem', margin: '0 0 0.5rem', fontWeight: 700 }}>Your Appointment Card</h2>
-          <p className="card-subtitle" style={{ fontSize: '0.95rem', opacity: 0.9, margin: 0 }}>Show this card at the clinic reception</p>
-        </div>
+    <div
+      className="appointment-card-overlay"
+      onClick={onClose}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        background: 'rgba(0,0,0,0.7)', display: 'flex',
+        justifyContent: 'center', alignItems: 'center',
+        zIndex: 1000, padding: '1rem', backdropFilter: 'blur(5px)',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: '#f8fafc', borderRadius: '20px',
+          maxWidth: '580px', width: '100%', maxHeight: '90vh',
+          overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)',
+          position: 'relative', padding: '1.5rem',
+        }}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute', top: '1rem', right: '1rem',
+            width: '36px', height: '36px', borderRadius: '50%',
+            border: 'none', background: 'rgba(0,0,0,0.1)',
+            color: '#1f2937', fontSize: '1.4rem', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10, lineHeight: 1,
+          }}
+        >×</button>
 
-        <div className="card-body" style={{
-          padding: '2rem',
-          display: 'grid',
-          gridTemplateColumns: '1fr 280px',
-          gap: '2rem'
-        }}>
-          <div className="card-main-content" style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.5rem'
-          }}>
-            {/* Patient Info */}
-            <div className="card-section patient-section" style={{
-              display: 'flex',
-              gap: '1rem',
-              padding: '1.25rem',
-              background: 'white',
-              borderRadius: '16px',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-              border: '1px solid #e5e7eb'
-            }}>
-              <div className="section-icon" style={{
-                width: '50px',
-                height: '50px',
-                background: 'linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.5rem',
-                flexShrink: 0
-              }}>👤</div>
-              <div className="section-content" style={{ flex: 1 }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.75rem',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  marginBottom: '0.25rem',
-                  fontWeight: 600
-                }}>Patient Name</label>
-                <h3 style={{
-                  fontSize: '1.25rem',
-                  color: '#1f2937',
-                  margin: 0,
-                  fontWeight: 600
-                }}>{appointment.patientName}</h3>
+        {/* Title */}
+        <h2 style={{ textAlign: 'center', marginBottom: '0.5rem', color: '#1a2e35', fontSize: '1.3rem', paddingRight: '2rem' }}>
+          Your Appointment Card
+        </h2>
+        <p style={{ textAlign: 'center', marginBottom: '1.25rem', color: '#64748b', fontSize: '0.88rem' }}>
+          Show this card at the hospital reception
+        </p>
+
+        {/* ── The Card (same design as BookingConfirmed) ── */}
+        <div ref={cardRef} className="digital-patient-card">
+
+          {/* Hospital Header */}
+          <div className="card-hospital-header">
+            <div className="hospital-logo-section">
+              <div className="hospital-logo-circle">
+                <span style={{ fontSize: '1.1rem' }}>🏥</span>
+              </div>
+              <div className="hospital-info">
+                <div className="hospital-name">
+                  {appointment.hospitalName || 'HEALTHMANDALA HOSPITAL'}
+                </div>
+                <div className="hospital-location" style={{ color: '#ffffff' }}>
+                  Nepal
+                </div>
               </div>
             </div>
+          </div>
 
-            {/* Doctor Info */}
-            <div className="card-section doctor-section" style={{
-              display: 'flex',
-              gap: '1rem',
-              padding: '1.25rem',
-              background: 'white',
-              borderRadius: '16px',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-              border: '1px solid #e5e7eb'
-            }}>
-              <div className="section-icon" style={{
-                width: '50px',
-                height: '50px',
-                background: 'linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '1.5rem',
-                flexShrink: 0
-              }}>👨‍⚕️</div>
-              <div className="section-content" style={{ flex: 1 }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '0.75rem',
-                  color: '#6b7280',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  marginBottom: '0.25rem',
-                  fontWeight: 600
-                }}>Doctor</label>
-                <h3 style={{
-                  fontSize: '1.25rem',
-                  color: '#1f2937',
-                  margin: 0,
-                  fontWeight: 600
-                }}>{appointment.doctorName}</h3>
-                <p className="specialization" style={{
-                  fontSize: '0.9rem',
-                  color: '#00a896',
-                  margin: '0.25rem 0 0',
-                  fontWeight: 500
-                }}>{appointment.doctorSpecialization}</p>
-                {appointment.hospital && (
-                  <p style={{
-                    fontSize: '0.85rem',
-                    color: '#6b7280',
-                    margin: '0.25rem 0 0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.25rem'
-                  }}>
-                    <span>🏥</span> {appointment.hospital}
-                  </p>
-                )}
+          {/* Patient Information */}
+          <div className="card-patient-info">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+              <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.82rem' }}>
+                <span style={{ fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>PATIENT:</span>
+                <span style={{ fontWeight: 700, color: '#0f4c75', textTransform: 'uppercase' }}>{patient.name}</span>
               </div>
+              <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.82rem' }}>
+                <span style={{ fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>AGE/SEX:</span>
+                <span style={{ fontWeight: 600, color: '#1e293b', textTransform: 'uppercase' }}>
+                  {patient.age ? `${patient.age} Y` : '—'} / {patient.gender ? patient.gender.charAt(0).toUpperCase() : '—'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.82rem' }}>
+                <span style={{ fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>PATIENT ID (MRN):</span>
+                <span style={{ fontWeight: 700, color: '#0f4c75', fontFamily: 'Courier New, monospace', letterSpacing: '1px' }}>{patient.id}</span>
+              </div>
+              {patient.phone && (
+                <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.82rem' }}>
+                  <span style={{ fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>PHONE:</span>
+                  <span style={{ fontWeight: 600, color: '#1e293b' }}>{patient.phone}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* QR Code + Appointment Details side by side */}
+          <div className="card-middle-section">
+            {/* QR Code */}
+            <div className="card-qr-section">
+              {qrCodeUrl ? (
+                <img src={qrCodeUrl} alt="QR Code" className="qr-code-image" />
+              ) : (
+                <div className="qr-code-placeholder">
+                  <div className="qr-loading">Generating<br />QR...</div>
+                </div>
+              )}
+              <div className="qr-instruction">Scan at Reception</div>
             </div>
 
             {/* Appointment Details */}
-            <div className="card-details-grid" style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '1rem'
-            }}>
-              <div className="detail-item">
-                <div className="detail-icon">📅</div>
-                <div>
-                  <label>Date</label>
-                  <p>{new Date(appointment.appointmentDate).toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}</p>
+            <div className="card-appointment-details">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.82rem' }}>
+                  <span style={{ fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>TOKEN NO:</span>
+                  <span style={{ fontWeight: 800, color: '#0f4c75', fontFamily: 'Courier New, monospace', fontSize: '1rem' }}>#{appointment.tokenNumber || '—'}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.82rem' }}>
+                  <span style={{ fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>DEPT:</span>
+                  <span style={{ fontWeight: 600, color: '#1e293b', textTransform: 'uppercase' }}>{appointment.doctorSpecialization || 'General'}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.82rem' }}>
+                  <span style={{ fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>DOCTOR:</span>
+                  <span style={{ fontWeight: 600, color: '#1e293b', textTransform: 'uppercase' }}>{appointment.doctorName}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.82rem' }}>
+                  <span style={{ fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>DATE:</span>
+                  <span style={{ fontWeight: 600, color: '#1e293b', textTransform: 'uppercase' }}>{formatDate()}</span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.82rem' }}>
+                  <span style={{ fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>TIME:</span>
+                  <span style={{ fontWeight: 600, color: '#1e293b', textTransform: 'uppercase' }}>{getTimeSlot() || '—'}</span>
                 </div>
               </div>
-
-              <div className="detail-item">
-                <div className="detail-icon">🎫</div>
-                <div>
-                  <label>Token Number</label>
-                  <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#00a896' }}>
-                    #{appointment.tokenNumber || 'N/A'}
-                  </p>
-                </div>
-              </div>
-
-              {appointment.appointmentTime && (
-                <div className="detail-item">
-                  <div className="detail-icon">🕐</div>
-                  <div>
-                    <label>Appointment Time</label>
-                    <p>{appointment.appointmentTime}</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="detail-item">
-                <div className="detail-icon">💰</div>
-                <div>
-                  <label>Consultation Fee</label>
-                  <p>Rs. {appointment.consultationFee}</p>
-                </div>
-              </div>
-
-              <div className="detail-item">
-                <div className="detail-icon">💳</div>
-                <div>
-                  <label>Payment Status</label>
-                  <p className={`payment-status ${appointment.paymentStatus}`}>
-                    {appointment.paymentStatus === 'paid' ? '✓ Paid' : 'Pending'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Status Badge */}
-            <div className="status-badge" style={{ backgroundColor: getStatusColor(appointment.status) }}>
-              {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
             </div>
           </div>
 
-          {/* QR Code Section */}
-          <div className="card-qr-section">
-            <div className="qr-code-container">
-              <img 
-                src={generateQRCode(qrData)} 
-                alt="Appointment QR Code"
-                className="qr-code"
-              />
+          {/* Payment Footer */}
+          <div className="card-payment-footer">
+            <div className="payment-status-badge">
+              <span className="status-icon">✓</span>
+              <span className="status-text">{appointment.paymentStatus === 'paid' ? 'PAID' : 'PENDING'}</span>
             </div>
-            <div className="qr-info">
-              <p className="qr-label">QR Code</p>
-              <p className="qr-id">#{appointmentId.slice(-8).toUpperCase()}</p>
+            <div className="payment-gateway">
+              <div className="gateway-label">GATEWAY</div>
+              <div className="gateway-value">{paymentMethod === 'khalti' ? 'Khalti' : 'Cash'}</div>
             </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="card-actions">
-          <button className="action-btn download-btn" onClick={handleDownload}>
-            <span className="btn-icon">⬇</span>
-            Download Card
-          </button>
-          
-          <div className="share-container">
-            <button 
-              className="action-btn share-btn" 
-              onClick={() => setShowShareMenu(!showShareMenu)}
-            >
-              <span className="btn-icon">📤</span>
-              Share
-            </button>
-            
-            {showShareMenu && (
-              <div className="share-menu">
-                <button onClick={() => handleShare('whatsapp')}>
-                  <span>💬</span> WhatsApp
-                </button>
-                <button onClick={() => handleShare('email')}>
-                  <span>📧</span> Email
-                </button>
-                <button onClick={() => handleShare('copy')}>
-                  <span>📋</span> Copy Link
-                </button>
+            {txnId && (
+              <div className="transaction-id">
+                <div className="txn-label">TXN ID</div>
+                <div className="txn-value">{txnId}</div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Footer Note */}
-        <div className="card-footer">
-          <p>Please arrive 10 minutes before your appointment time</p>
-          <p className="footer-note">For any changes, contact the clinic or reschedule through the app</p>
+        {/* Download Button */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.25rem' }}>
+          <button onClick={downloadCard} className="download-card-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download Card
+          </button>
+        </div>
+
+        {/* Notes */}
+        <div className="card-notes" style={{ marginTop: '1rem' }}>
+          <div className="note-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0369a1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>Please arrive 15 minutes before your appointment time</span>
+          </div>
+          <div className="note-item">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0369a1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: '1px' }}>
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+            </svg>
+            <span>Save this card offline for easy access at the hospital</span>
+          </div>
         </div>
       </div>
     </div>

@@ -78,7 +78,7 @@ const LandingPage = () => {
     );
     
     if (results.length > 0) {
-      navigate('/book-appointment', { state: { searchQuery: searchQuery } });
+      navigate('/find-doctors', { state: { searchQuery: searchQuery } });
     } else {
       alert('No doctors found matching your search');
     }
@@ -166,8 +166,9 @@ const LandingPage = () => {
     const endMin = toMin(end);
     const breakStartMin = hasBreak ? toMin(breakStart) : null;
     const breakEndMin = hasBreak ? toMin(breakEnd) : null;
+    const interval = doc.consultationDuration || 10;
     
-    for (let m = startMin; m < endMin; m += 10) {
+    for (let m = startMin; m < endMin; m += interval) {
       if (hasBreak && m >= breakStartMin && m < breakEndMin) {
         continue;
       }
@@ -180,21 +181,34 @@ const LandingPage = () => {
   const getNextAvailableTime = (doc) => {
     const dates = getNextDates(doc);
     if (dates.length === 0) return null;
-    
-    const firstDate = dates[0];
-    const slots = getTimeSlots(doc, firstDate);
-    if (slots.length === 0) return null;
-    
+
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = monthNames[firstDate.getMonth()];
-    const day = firstDate.getDate();
-    
-    const [hours, minutes] = slots[0].split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
-    const timeStr = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-    
-    return `Next Available: ${month} ${day} at ${timeStr}`;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+
+    for (const date of dates) {
+      const slots = getTimeSlots(doc, date);
+      if (slots.length === 0) continue;
+
+      const dateIso = date.toISOString().split('T')[0];
+      const isToday = dateIso === todayStr;
+
+      for (const slot of slots) {
+        if (isToday) {
+          const [h, m] = slot.split(':').map(Number);
+          if (h * 60 + m <= nowMinutes) continue;
+        }
+        const month = monthNames[date.getMonth()];
+        const day = date.getDate();
+        const [hours, minutes] = slot.split(':').map(Number);
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
+        const timeStr = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+        return `Next Available: ${month} ${day} at ${timeStr}`;
+      }
+    }
+
+    return null;
   };
 
   return (
@@ -434,7 +448,7 @@ const LandingPage = () => {
                       Book Appointment
                     </button>
                   ) : (
-                    <Link to={`/login?redirect=/book-appointment`} className="btn btn-primary btn-small">
+                    <Link to={`/login?redirect=/find-doctors`} className="btn btn-primary btn-small">
                       Book Appointment
                     </Link>
                   )}
@@ -560,7 +574,7 @@ const LandingPage = () => {
                   <h3>{hospital.hospitalName}</h3>
                   <p className="location">{getHospitalLocation(hospital)}</p>
                   <Link
-                    to="/book-appointment"
+                    to="/find-doctors"
                     state={{ hospitalFilter: hospital.hospitalName }}
                     className="btn btn-primary btn-small"
                   >Book an Appointment</Link>

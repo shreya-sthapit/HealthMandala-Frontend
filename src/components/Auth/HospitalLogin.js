@@ -35,14 +35,51 @@ export default function HospitalLogin() {
       });
       const data = await res.json();
       if (data.success) {
-        if (data.user.role !== 'hospital_admin') {
-          setError('This login is for hospital admins only.');
+        const allowedRoles = ['hospital_admin', 'staff', 'doctor'];
+        if (!allowedRoles.includes(data.user.role)) {
+          setError('This login is for hospital staff and admins only.');
           return;
         }
+
         localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
         localStorage.setItem('userRole', data.user.role);
-        navigate('/hospital-dashboard');
+
+        // Enrich user object with hospitalId + hospitalName for staff
+        let enrichedUser = { ...data.user };
+        try {
+          if (data.user.role === 'staff') {
+            const staffRes = await fetch(`http://localhost:5001/api/hospital-dashboard/staff/by-user/${data.user.id}`, {
+              headers: { Authorization: `Bearer ${data.token}` }
+            });
+            const staffData = await staffRes.json();
+            if (staffData.success && staffData.staff) {
+              enrichedUser.hospitalId = staffData.staff.hospitalId;
+              enrichedUser.hospitalName = staffData.staff.currentHospital?.[0] || '';
+              enrichedUser.staffRole = staffData.staff.role; // receptionist / pharmacist / etc.
+              // Override userRole with specific staff role for route guards
+              localStorage.setItem('userRole', staffData.staff.role);
+            }
+          } else if (data.user.role === 'hospital_admin') {
+            const adminRes = await fetch(
+              `http://localhost:5001/api/hospital-dashboard/my-hospital?userId=${data.user.id}`,
+              { headers: { Authorization: `Bearer ${data.token}` } }
+            );
+            const adminData = await adminRes.json();
+            if (adminData.success && adminData.hospital) {
+              enrichedUser.hospitalId = adminData.hospital._id;
+              enrichedUser.hospitalName = adminData.hospital.hospitalName;
+            }
+          }
+        } catch { /* enrichment failed — proceed with base user */ }
+
+        localStorage.setItem('user', JSON.stringify(enrichedUser));
+
+        // Route based on role
+        const role = localStorage.getItem('userRole');
+        if (role === 'receptionist') navigate('/receptionist-dashboard');
+        else if (role === 'pharmacist') navigate('/pharmacist-dashboard');
+        else if (role === 'doctor') navigate('/doctor-dashboard');
+        else navigate('/hospital-dashboard');
       } else {
         setError(data.error || 'Invalid credentials. Please try again.');
       }

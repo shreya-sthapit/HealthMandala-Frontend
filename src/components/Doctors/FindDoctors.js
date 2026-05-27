@@ -162,7 +162,7 @@ const FindDoctors = () => {
                   Rs. {doctor.fee} <span>/ visit</span>
                 </div>
                 <Link 
-                  to="/book-appointment" 
+                  to="/find-doctors" 
                   state={{ preSelectedDoctor: doctor }}
                   className="book-btn-small"
                   style={{ textDecoration: 'none', display: 'inline-block', textAlign: 'center' }}

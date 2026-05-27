@@ -18,7 +18,7 @@ export default function HDReports({ userId, API }) {
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
-  const statusColors = { confirmed: '#00a896', completed: '#4299e1', cancelled: '#e53e3e', pending: '#ed8936', 'pending-admin': '#a0aec0' };
+  const statusColors = { confirmed: '#00a896', completed: '#4299e1', cancelled: '#e53e3e', pending: '#ed8936' };
 
   return (
     <div>

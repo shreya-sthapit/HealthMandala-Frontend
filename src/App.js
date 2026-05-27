@@ -1,9 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import LandingPage from './components/LandingPage/LandingPage';
 import AuthPage from './components/Auth/AuthPage';
-import RoleSelect from './components/Auth/RoleSelect';
 import Home from './components/Home/Home';
-import BookAppointment from './components/Booking/BookAppointment';
 import BookingConfirmed from './components/Booking/BookingConfirmed';
 import KhaltiReturn from './components/Booking/KhaltiReturn';
 import MyAppointments from './components/Appointments/MyAppointments';
@@ -12,30 +10,30 @@ import AllSpecialties from './components/Specialties/AllSpecialties';
 import HospitalAppointments from './components/Hospitals/HospitalAppointments';
 import DoctorProfile from './components/Doctors/DoctorProfile';
 import MedicalRecords from './components/MedicalRecords/MedicalRecords';
+import ChangePassword from './components/Profile/ChangePassword';
+import BookAppointment from './components/Booking/BookAppointment';
 import DoctorDashboard from './components/DoctorDashboard/DoctorDashboard';
-import DoctorAppointments from './components/DoctorDashboard/DoctorAppointments';
 import DoctorPatients from './components/DoctorDashboard/DoctorPatients';
 import DoctorSchedule from './components/DoctorDashboard/DoctorSchedule';
 import Profile from './components/Profile/Profile';
+import DoctorProfileView from './components/Profile/DoctorProfile';
 import ForgotPassword from './components/Auth/ForgotPassword';
 import VerifyOTP from './components/Auth/VerifyOTP';
 import VerifyEmail from './components/Auth/VerifyEmail';
 import NIDRegistration from './components/Auth/NIDRegistration';
-import AccountPending from './components/Auth/AccountPending';
 import HospitalDashboard from './components/HospitalDashboard/HospitalDashboard';
+import ReceptionistDashboard from './components/ReceptionistDashboard/ReceptionistDashboard';
+import PharmacistDashboard from './components/PharmacistDashboard/PharmacistDashboard';
 import SetHospitalPassword from './components/Auth/SetHospitalPassword';
 import SetDoctorPassword from './components/Auth/SetDoctorPassword';
 import SetStaffPassword from './components/Auth/SetStaffPassword';
 import HospitalLogin from './components/Auth/HospitalLogin';
-import PersonalInfo from './components/Auth/PatientRegistration/PersonalInfo';
-import AddressInfo from './components/Auth/PatientRegistration/AddressInfo';
-import EmergencyContact from './components/Auth/PatientRegistration/EmergencyContact';
-import MedicalInfo from './components/Auth/PatientRegistration/MedicalInfo';
-import NIDVerification from './components/Auth/PatientRegistration/NIDVerification';
+import PatientRegistrationForm from './components/Auth/PatientRegistration/PatientRegistrationForm';
 import Navbar from './components/Navbar/Navbar';
 import DoctorAuth from './components/Auth/DoctorAuth';
 import Footer from './components/Footer/Footer';
 import PartnerWithUs from './components/Partner/PartnerWithUs';
+import Notifications from './components/Notifications/Notifications';
 import './App.css';
 
 // ── Guards ──────────────────────────────────────────
@@ -48,6 +46,17 @@ const PatientRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   const role = localStorage.getItem('userRole');
   if (!token || role !== 'patient') {
+    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  }
+  return children;
+};
+
+/** Patient or Doctor — any authenticated user */
+const AuthRoute = ({ children }) => {
+  const location = useLocation();
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('userRole');
+  if (!token || !['patient', 'doctor'].includes(role)) {
     return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   }
   return children;
@@ -70,6 +79,22 @@ const HospitalAdminRoute = ({ children }) => {
   return children;
 };
 
+/** Staff routes — accepts a list of allowed roles */
+const StaffRoute = ({ children, allowedRoles }) => {
+  const role = getRole();
+  if (!isLoggedIn() || !allowedRoles.includes(role)) {
+    return <Navigate to="/hospital/login" replace />;
+  }
+  return children;
+};
+
+/** Renders the correct profile page based on role */
+const ProfileRouter = () => {
+  const role = localStorage.getItem('userRole') ||
+    JSON.parse(localStorage.getItem('user') || '{}').role || 'patient';
+  return role === 'doctor' ? <DoctorProfileView /> : <Profile />;
+};
+
 function App() {
   return (
     <Router>
@@ -83,38 +108,49 @@ function App() {
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/doctor-auth" element={<DoctorAuth />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/select-role" element={<RoleSelect />} />
           <Route path="/nid-registration" element={<NIDRegistration />} />
-          <Route path="/account-pending" element={<AccountPending />} />
-          {/* Patient Registration Steps */}
-          <Route path="/register/personal" element={<PersonalInfo />} />
-          <Route path="/register/address" element={<AddressInfo />} />
-          <Route path="/register/emergency" element={<EmergencyContact />} />
-          <Route path="/register/medical" element={<MedicalInfo />} />
-          <Route path="/register/nid" element={<NIDVerification />} />
+          {/* Patient Registration — single form */}
+          <Route path="/register" element={<PatientRegistrationForm />} />
+          {/* Legacy step routes redirect to the single form */}
+          <Route path="/register/personal" element={<Navigate to="/register" replace />} />
+          <Route path="/register/address" element={<Navigate to="/register" replace />} />
+          <Route path="/register/emergency" element={<Navigate to="/register" replace />} />
+          <Route path="/register/medical" element={<Navigate to="/register" replace />} />
+          <Route path="/register/nid" element={<Navigate to="/register" replace />} />
           {/* Doctor Registration Steps — removed, fields now in DoctorAuth signup */}
           <Route path="/home" element={<Navigate to="/" replace />} />
-          <Route path="/book-appointment" element={<BookAppointment />} />
           <Route path="/booking-confirmed" element={<PatientRoute><BookingConfirmed /></PatientRoute>} />
           <Route path="/khalti-return" element={<KhaltiReturn />} />
           <Route path="/my-appointments" element={<PatientRoute><MyAppointments /></PatientRoute>} />
           <Route path="/find-doctors" element={<SelectDoctor />} />
+          <Route path="/book-appointment" element={<PatientRoute><BookAppointment /></PatientRoute>} />
           <Route path="/specialties" element={<AllSpecialties />} />
           <Route path="/hospitals" element={<HospitalAppointments />} />
           <Route path="/doctor/:id" element={<DoctorProfile />} />
           <Route path="/medical-records" element={<PatientRoute><MedicalRecords /></PatientRoute>} />
           <Route path="/doctor-dashboard" element={<DoctorRoute><DoctorDashboard /></DoctorRoute>} />
-          <Route path="/doctor-appointments" element={<DoctorRoute><DoctorAppointments /></DoctorRoute>} />
           <Route path="/doctor-patients" element={<DoctorRoute><DoctorPatients /></DoctorRoute>} />
           <Route path="/doctor-schedule" element={<DoctorRoute><DoctorSchedule /></DoctorRoute>} />
-          <Route path="/profile" element={<PatientRoute><Profile /></PatientRoute>} />
+          <Route path="/profile" element={<AuthRoute><ProfileRouter /></AuthRoute>} />
+          <Route path="/change-password" element={<AuthRoute><ChangePassword /></AuthRoute>} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/partner" element={<PartnerWithUs />} />
+          <Route path="/notifications" element={<PatientRoute><Notifications /></PatientRoute>} />
           <Route path="/hospital/set-password" element={<SetHospitalPassword />} />
           <Route path="/doctor/set-password" element={<SetDoctorPassword />} />
           <Route path="/staff/set-password" element={<SetStaffPassword />} />
           <Route path="/hospital/login" element={<HospitalLogin />} />
           <Route path="/hospital-dashboard" element={<HospitalAdminRoute><HospitalDashboard /></HospitalAdminRoute>} />
+          <Route path="/receptionist-dashboard" element={
+            <StaffRoute allowedRoles={['receptionist', 'staff', 'hospital_admin', 'admin']}>
+              <ReceptionistDashboard />
+            </StaffRoute>
+          } />
+          <Route path="/pharmacist-dashboard" element={
+            <StaffRoute allowedRoles={['pharmacist', 'staff', 'hospital_admin', 'admin']}>
+              <PharmacistDashboard />
+            </StaffRoute>
+          } />
         </Routes>
         </div>
         <Footer />
