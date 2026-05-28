@@ -118,8 +118,7 @@ export default function HospitalDashboard() {
   const PILL_H = 42;
 
   return (
-    <div className="hospital-dashboard">
-      {/* ── Fixed notches rendered at root level — never clipped ── */}
+    <div className="hospital-dashboard hd-admin">
       {/* Fixed notches — updated via DOM ref, no React re-render */}
       <div ref={notchTopRef} style={{
         position: 'fixed',

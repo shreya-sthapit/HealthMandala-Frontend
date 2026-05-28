@@ -728,12 +728,12 @@
   gap: 0.4rem;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .dd-rx-head {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.5fr 1.5fr 36px;
+  grid-template-columns: 2fr 1.5fr 1.5fr 36px;
   gap: 0.5rem;
   padding: 0.6rem 0.75rem;
   background: #f8fafc;
@@ -742,11 +742,12 @@
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.4px;
+  border-radius: 10px 10px 0 0;
 }
 
 .dd-rx-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.5fr 1.5fr 36px;
+  grid-template-columns: 2fr 1.5fr 1.5fr 36px;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   align-items: center;
@@ -1186,13 +1187,13 @@
 
   .dd-rx-head,
   .dd-rx-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 36px;
   }
 
+  .dd-rx-head span:nth-child(2),
   .dd-rx-head span:nth-child(3),
-  .dd-rx-head span:nth-child(4),
-  .dd-rx-row .dd-rx-select:nth-child(3),
-  .dd-rx-row .dd-rx-select:nth-child(4) {
+  .dd-rx-row .dd-rx-select:nth-child(2),
+  .dd-rx-row .dd-rx-select:nth-child(3) {
     display: none;
   }
 
@@ -1200,4 +1201,14 @@
     height: auto;
     padding: 1rem;
   }
+}
+
+/* ── Footer (matches hospital admin hd-footer) ───────────────────────────── */
+.hd-footer {
+  margin-top: auto;
+  padding: 1rem 0;
+  border-top: 1px solid #e3e8ef;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #9ca3af;
 }

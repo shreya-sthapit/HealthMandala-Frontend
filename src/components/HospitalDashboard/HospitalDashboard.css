@@ -6,7 +6,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --hd-sidebar-w:  240px;
+  --hd-sidebar-w:  270px;
   --hd-topbar-h:   56px;
   --hd-teal1:      #00c9b1;
   --hd-teal2:      #00a896;
@@ -807,4 +807,15 @@
   .hd-stats-grid { grid-template-columns: repeat(2, 1fr); }
   .hd-doctor-grid { grid-template-columns: 1fr; }
   .hd-schedule-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* ── Hospital Admin — narrower sidebar ───────────────────────────────────── */
+.hd-admin {
+  --hd-sidebar-w: 220px;
+}
+
+@media (max-width: 1100px) {
+  .hd-admin {
+    --hd-sidebar-w: 185px;
+  }
 }

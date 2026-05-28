@@ -125,8 +125,8 @@ const Navbar = () => {
   const isAuthPage = ['/login', '/signup', '/auth', '/hospital/set-password', '/doctor/set-password', '/staff/set-password'].includes(path);
   if (isAuthPage && user) return null;
 
-  // Hospital dashboard & Receptionist dashboard — clean white topbar matching reference design
-  if (path.startsWith('/hospital-dashboard') || path.startsWith('/receptionist-dashboard')) {
+  // Hospital dashboard, Receptionist & Pharmacist dashboards — clean white topbar matching reference design
+  if (path.startsWith('/hospital-dashboard') || path.startsWith('/receptionist-dashboard') || path.startsWith('/pharmacist-dashboard')) {
     return (
       <nav className="global-navbar" style={{
         padding: '0 2rem',

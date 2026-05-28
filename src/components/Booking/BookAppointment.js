@@ -1218,7 +1218,7 @@ const BookAppointment = () => {
         tokenNumber: booking.tokenNumber,
         appointmentType: 'consultation',
         reasonForVisit: booking.reason || 'General consultation',
-        consultationFee: booking.doctor.fee || booking.doctor.consultationFee,
+        consultationFee: booking.doctor.fee || booking.doctor.consultationFee || 0,
         paymentMethod: 'khalti',
         paymentStatus: 'pending',
       };
@@ -1230,9 +1230,14 @@ const BookAppointment = () => {
       console.log('booking.appointmentTime:', booking.appointmentTime);
       console.log('Full appointmentData:', appointmentData);
 
-      // Amount in paisa (Rs × 100)
-      const amountPaisa = Math.round((booking.doctor.fee || 0) * 100);
-      const orderId = `APPT-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+      // Amount in paisa (Rs × 100) — check both fee field names
+      const feeRs = booking.doctor.fee || booking.doctor.consultationFee || 0;
+      if (!feeRs || feeRs <= 0) {
+        alert('Consultation fee is not set for this doctor. Please contact the clinic.');
+        return;
+      }
+      const amountPaisa = Math.round(feeRs * 100);
+      const orderId = `APT-${Date.now()}`;
       const returnUrl = `${window.location.origin}/khalti-return`;
 
       console.log('Initiating Khalti payment with:', {
@@ -1243,6 +1248,11 @@ const BookAppointment = () => {
         returnUrl,
       });
 
+      // Khalti validates customer email strictly — send empty string if not a valid address
+      const safeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(appointmentData.patientEmail)
+        ? appointmentData.patientEmail
+        : '';
+
       // Initiate Khalti payment via backend
       const initiateRes = await fetch('http://localhost:5001/api/khalti/initiate', {
         method: 'POST',
@@ -1252,7 +1262,7 @@ const BookAppointment = () => {
           orderId,
           orderName: `Appointment with ${booking.doctor.name}`,
           customerName: appointmentData.patientName,
-          customerEmail: appointmentData.patientEmail,
+          customerEmail: safeEmail,
           customerPhone: appointmentData.patientPhone,
           returnUrl,
         }),
@@ -1263,9 +1273,15 @@ const BookAppointment = () => {
       console.log('Khalti initiate response data:', initiateData);
 
       if (!initiateData.success || !initiateData.paymentUrl) {
-        const errorMsg = initiateData.error || initiateData.details?.detail || 'Failed to initiate Khalti payment. Please try again.';
+        // Extract the most specific error message from Khalti's response
+        const khaltiDetails = initiateData.khaltiError || initiateData.details || {};
+        const fieldErrors = Object.entries(khaltiDetails)
+          .filter(([k]) => k !== 'error_key')
+          .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`)
+          .join('\n');
+        const errorMsg = fieldErrors || initiateData.error || 'Failed to initiate Khalti payment. Please try again.';
         console.error('Khalti initiation failed:', errorMsg, initiateData);
-        alert(errorMsg);
+        alert(`Khalti payment error:\n${errorMsg}`);
         return;
       }
 
@@ -1297,27 +1313,34 @@ const BookAppointment = () => {
   };
 
   const canProceed = () => {
-    if (step === 1) {
-      // Hospital flow: department click navigates directly, no Continue button needed
-      if (hospitalFilter) return false;
-      // General flow: require doctor selection
-      return booking.doctor;
-    }
-    if (step === 2) {
-      // Hospital flow step 2 is doctor selection — handled by card click, no Continue button
-      if (hospitalFilter) return false;
-      return booking.date && selectedSlot;
-    }
-    if (step === 3) {
-      // Hospital flow step 3 is date/time selection
-      if (hospitalFilter) return booking.date && selectedSlot;
-      return selectedDependent;
-    }
+    if (step === 1) return false; // department click navigates directly
+    if (step === 2) return false; // doctor card click navigates directly
+    if (step === 3) return booking.date && selectedSlot;
     if (step === 4) return selectedDependent;
     return true;
   };
 
   const filteredDoctors = getFilteredDoctors();
+
+  // If no hospital filter, redirect to hospitals page
+  if (!hospitalFilter && !preSelectedDoctor) {
+    return (
+      <div className="booking-container">
+        <div className="booking-content">
+          <div className="booking-layout">
+            <div className="booking-main" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏥</div>
+              <h2 style={{ color: '#1a2e35', marginBottom: '0.75rem' }}>Select a Hospital First</h2>
+              <p style={{ color: '#64748b', marginBottom: '2rem' }}>Please choose a hospital to book an appointment.</p>
+              <a href="/hospitals" className="book-btn" style={{ display: 'inline-block', textDecoration: 'none', padding: '0.85rem 2rem', borderRadius: 12 }}>
+                Browse Hospitals →
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="booking-container">
@@ -2164,14 +2187,10 @@ const BookAppointment = () => {
                       <div className="week-calendar">
                         {(() => {
                           const today = new Date();
-                          const currentDay = today.getDay();
                           const weekDates = [];
-                          const startOfWeek = new Date(today);
-                          startOfWeek.setDate(today.getDate() - currentDay);
-                          
                           for (let i = 0; i < 7; i++) {
-                            const date = new Date(startOfWeek);
-                            date.setDate(startOfWeek.getDate() + i);
+                            const date = new Date(today);
+                            date.setDate(today.getDate() + i);
                             weekDates.push(date);
                           }
                           
@@ -2186,63 +2205,34 @@ const BookAppointment = () => {
                             const isSelected = booking.date?.full === dateStr;
                             
                             const doctorAvailableDays = (() => {
-                              console.log('=== DATE AVAILABILITY CHECK (DETAILED) ===');
-                              console.log('Full booking.doctor object:', booking.doctor);
-                              console.log('Keys in doctor object:', Object.keys(booking.doctor || {}));
-                              
-                              // Try hospital-specific schedule first
-                              const hospitalName = (Array.isArray(booking.doctor?.hospital) 
-                                ? booking.doctor.hospital[0] 
-                                : booking.doctor?.hospital) || 
-                                (Array.isArray(booking.doctor?.currentHospital) 
-                                  ? booking.doctor.currentHospital[0] 
+                              // Mirror exactly what getTimeSlots does:
+                              // 1. Try to match by hospital name
+                              // 2. Fall back to hospitalSchedules[0]
+                              // 3. Fall back to general schedule / availableDays
+                              const hospitalName = (Array.isArray(booking.doctor?.hospital)
+                                ? booking.doctor.hospital[0]
+                                : booking.doctor?.hospital) ||
+                                (Array.isArray(booking.doctor?.currentHospital)
+                                  ? booking.doctor.currentHospital[0]
                                   : booking.doctor?.currentHospital) || '';
-                              
-                              console.log('Hospital name for matching:', hospitalName);
-                              console.log('Doctor hospital field:', booking.doctor?.hospital);
-                              console.log('Doctor currentHospital field:', booking.doctor?.currentHospital);
-                              console.log('Doctor hospitalSchedules field:', booking.doctor?.hospitalSchedules);
-                              console.log('Type of hospitalSchedules:', typeof booking.doctor?.hospitalSchedules);
-                              console.log('Is array:', Array.isArray(booking.doctor?.hospitalSchedules));
-                              
-                              if (booking.doctor?.hospitalSchedules && Array.isArray(booking.doctor.hospitalSchedules)) {
-                                console.log('hospitalSchedules length:', booking.doctor.hospitalSchedules.length);
-                                booking.doctor.hospitalSchedules.forEach((hs, idx) => {
-                                  console.log(`  Schedule ${idx}:`, {
-                                    hospital: hs.hospital,
-                                    scheduleLength: hs.schedule?.length || 0,
-                                    matches: hs.hospital?.trim().toLowerCase() === hospitalName?.trim().toLowerCase()
-                                  });
-                                });
+
+                              if (booking.doctor?.hospitalSchedules && Array.isArray(booking.doctor.hospitalSchedules) && booking.doctor.hospitalSchedules.length > 0) {
+                                // Try exact hospital name match first
+                                const matched = booking.doctor.hospitalSchedules.find(
+                                  hs => hs.hospital?.trim().toLowerCase() === hospitalName?.trim().toLowerCase()
+                                );
+                                const scheduleToUse = matched || booking.doctor.hospitalSchedules[0];
+                                if (scheduleToUse?.schedule) {
+                                  return scheduleToUse.schedule.filter(s => s.active).map(s => s.day);
+                                }
                               }
-                              
-                              const hospitalSchedule = booking.doctor?.hospitalSchedules?.find(
-                                hs => hs.hospital?.trim().toLowerCase() === hospitalName?.trim().toLowerCase()
-                              );
-                              console.log('Found hospital schedule:', hospitalSchedule);
-                              
-                              if (hospitalSchedule?.schedule) {
-                                const activeDays = hospitalSchedule.schedule.filter(s => s.active).map(s => s.day);
-                                console.log('Active days from hospital schedule:', activeDays);
-                                return activeDays;
-                              }
-                              
+
                               // Fall back to general schedule or availableDays
-                              console.log('Falling back to schedule or availableDays');
-                              console.log('Doctor schedule:', booking.doctor?.schedule);
-                              console.log('Doctor availableDays:', booking.doctor?.availableDays);
-                              
-                              const fallback = booking.doctor?.schedule?.filter(s => s.active).map(s => s.day) || 
+                              return booking.doctor?.schedule?.filter(s => s.active).map(s => s.day) ||
                                      booking.doctor?.availableDays || [];
-                              console.log('Using fallback days:', fallback);
-                              return fallback;
                             })();
-                            console.log('Doctor available days:', doctorAvailableDays);
-                            console.log('Checking if', fullDayName, 'is available');
-                            
                             // Check if date is in the past (before today)
                             const isPastDate = date < today && !isToday;
-                            console.log('Is past date:', isPastDate);
                             
                             // Check if doctor works on this day
                             const doctorWorksThisDay = doctorAvailableDays.includes(fullDayName);
@@ -2252,9 +2242,7 @@ const BookAppointment = () => {
                             
                             // Date is "available" (has slots) only if doctor works AND not past
                             const isAvailable = doctorWorksThisDay && !isPastDate;
-                            console.log('Is available:', isAvailable);
-                            console.log('Is clickable:', isClickable);
-                            
+
                             return (
                               <div
                                 key={index}
@@ -2550,7 +2538,7 @@ const BookAppointment = () => {
                       </button>
                     ) : step === 5 ? (
                       <button className="action-btn primary-btn" onClick={handleBooking}>
-                        Pay Rs. {booking.doctor?.fee || 0} & Confirm
+                        Pay Rs. {booking.doctor?.fee || booking.doctor?.consultationFee || 0} & Confirm
                       </button>
                     ) : null}
                   </div>
@@ -2992,7 +2980,7 @@ const BookAppointment = () => {
                       <div className="step5-payment-summary">
                         <div className="step5-summary-row step5-summary-total">
                           <span>Total Amount</span>
-                          <span>Rs. {booking.doctor?.fee || 0}</span>
+                          <span>Rs. {booking.doctor?.fee || booking.doctor?.consultationFee || 0}</span>
                         </div>
                       </div>
                     </div>
@@ -3009,7 +2997,7 @@ const BookAppointment = () => {
                         className="step5-btn step5-btn-pay" 
                         onClick={handleBooking}
                       >
-                        Pay Rs. {booking.doctor?.fee || 0}
+                        Pay Rs. {booking.doctor?.fee || booking.doctor?.consultationFee || 0}
                       </button>
                     </div>
                   </div>

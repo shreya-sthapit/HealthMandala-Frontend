@@ -29,6 +29,108 @@ const today = () => {
   return d;
 };
 
+// ── MedicineSearch — inventory-backed combobox ────────────────────────────────
+function MedicineSearch({ value, onChange }) {
+  const [query, setQuery]       = useState(value || '');
+  const [results, setResults]   = useState([]);
+  const [open, setOpen]         = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const debounceRef             = useRef(null);
+  const wrapRef                 = useRef(null);
+
+  // Sync external value changes (e.g. reset on patient change)
+  useEffect(() => { setQuery(value || ''); }, [value]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const search = (q) => {
+    clearTimeout(debounceRef.current);
+    if (!q.trim()) { setResults([]); setOpen(false); return; }
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(
+          `http://localhost:5001/api/inventory?search=${encodeURIComponent(q)}`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+        );
+        const data = await res.json();
+        if (data.success) { setResults(data.medicines || []); setOpen(true); }
+      } catch { /* silent */ }
+      finally { setLoading(false); }
+    }, 250);
+  };
+
+  const handleInput = (e) => {
+    const q = e.target.value;
+    setQuery(q);
+    onChange(q);   // keep parent in sync while typing
+    search(q);
+  };
+
+  const handleSelect = (med) => {
+    setQuery(med.medicine_name);
+    onChange(med.medicine_name);
+    setOpen(false);
+    setResults([]);
+  };
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', flex: 1 }}>
+      <input
+        className="dd-rx-input"
+        placeholder="Search medicine…"
+        value={query}
+        onChange={handleInput}
+        onFocus={() => query.trim() && results.length > 0 && setOpen(true)}
+        autoComplete="off"
+      />
+      {loading && (
+        <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: '#94a3b8' }}>…</span>
+      )}
+      {open && results.length > 0 && (
+        <ul style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 999,
+          background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 8,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.10)', margin: '2px 0 0', padding: 0,
+          listStyle: 'none', maxHeight: 220, overflowY: 'auto',
+        }}>
+          {results.map((med) => (
+            <li
+              key={med._id}
+              onMouseDown={() => handleSelect(med)}
+              style={{
+                padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: '0.83rem',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                borderBottom: '1px solid #f1f5f9',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#f0fafa'}
+              onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+            >
+              <span style={{ fontWeight: 500, color: '#1a2e35' }}>{med.medicine_name}</span>
+              <span style={{
+                fontSize: '0.72rem', fontWeight: 600,
+                color: med.stock_quantity > 0 ? '#059669' : '#dc2626',
+                background: med.stock_quantity > 0 ? '#d1fae5' : '#fee2e2',
+                borderRadius: 20, padding: '0.1rem 0.5rem', whiteSpace: 'nowrap',
+              }}>
+                {med.stock_quantity > 0 ? `${med.stock_quantity} in stock` : 'Out of stock'}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 const STATUS_META = {
   active:    { label: 'In Room',   color: '#16a34a', bg: '#dcfce7', dot: '#16a34a' },
   waiting:   { label: 'Waiting',   color: '#d97706', bg: '#fef3c7', dot: '#d97706' },
@@ -155,26 +257,24 @@ const LiveQueue = ({ doctorId, doctorName }) => {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       const validMeds = medicines.filter(m => m.name.trim());
 
-      // Save prescription
-      if (validMeds.length > 0 || diagnosis || chiefComplaints) {
-        await fetch('http://localhost:5001/api/prescriptions/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            patientId: selected.patientId,
-            appointmentId: selected._id,
-            doctorId: userData.id,
-            doctorName,
-            patientName: selected.patientName,
-            diagnosis,
-            chiefComplaints,
-            medicines: validMeds,
-            notes: advice,
-            followUpDate: followUp === 'Custom Date' ? customFollowUp : followUp,
-            tokenNumber: selected.tokenNumber,
-          }),
-        });
-      }
+      // Always create a prescription record so the pharmacist sees the visit
+      await fetch('http://localhost:5001/api/prescriptions/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patientId: selected.patientId,
+          appointmentId: selected._id,
+          doctorId: userData.id,
+          doctorName,
+          patientName: selected.patientName,
+          diagnosis,
+          chiefComplaints,
+          medicines: validMeds,
+          notes: advice,
+          followUpDate: followUp === 'Custom Date' ? customFollowUp : followUp,
+          tokenNumber: selected.tokenNumber,
+        }),
+      });
 
       // Mark appointment as 'prescribed' — pharmacist will finalize to 'completed'
       await fetch(`http://localhost:5001/api/appointments/complete/${selected._id}`, {
@@ -329,23 +429,16 @@ const LiveQueue = ({ doctorId, doctorName }) => {
               <div className="dd-rx-table">
                 <div className="dd-rx-head">
                   <span>Medicine Name</span>
-                  <span>Strength</span>
                   <span>Timing</span>
                   <span>Duration</span>
                   <span></span>
                 </div>
                 {medicines.map((med, i) => (
                   <div key={i} className="dd-rx-row">
-                    <input
-                      className="dd-rx-input"
-                      placeholder="e.g. Cetamol"
+                    <MedicineSearch
                       value={med.name}
-                      onChange={e => updateMedicine(i, 'name', e.target.value)}
+                      onChange={val => updateMedicine(i, 'name', val)}
                     />
-                    <select className="dd-rx-select" value={med.strength} onChange={e => updateMedicine(i, 'strength', e.target.value)}>
-                      <option value="">Select</option>
-                      {STRENGTH_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
                     <select className="dd-rx-select" value={med.timing} onChange={e => updateMedicine(i, 'timing', e.target.value)}>
                       <option value="">Select</option>
                       {FREQ_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
@@ -727,9 +820,8 @@ const DoctorDashboard = () => {
             </div>
           )}
         </div>
+        <div className="hd-footer">© {new Date().getFullYear()} HealthMandala. All rights reserved.</div>
       </main>
-
-      {/* Change Password Modal — at root level so it works from any view */}
       {showChangePwd && (
         <div className="dd-modal-overlay" onClick={() => setShowChangePwd(false)}>
           <div className="dd-modal" onClick={e => e.stopPropagation()}>

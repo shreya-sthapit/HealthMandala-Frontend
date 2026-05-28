@@ -7,6 +7,10 @@ const Footer = () => {
   if (pathname.startsWith('/admin')) return null;
   if (pathname.startsWith('/hospital-dashboard')) return null;
   if (pathname.startsWith('/receptionist-dashboard')) return null;
+  if (pathname.startsWith('/pharmacist-dashboard')) return null;
+  if (pathname.startsWith('/doctor-dashboard')) return null;
+  if (pathname.startsWith('/doctor-schedule')) return null;
+  if (pathname.startsWith('/doctor-patients')) return null;
 
   return (
     <footer className="global-footer">

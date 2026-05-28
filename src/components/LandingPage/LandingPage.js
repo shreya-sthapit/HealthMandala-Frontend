@@ -217,12 +217,13 @@ const LandingPage = () => {
       <section className="hero">
         <div className="hero-content">
           <div className="hero-text">
+            <p className="hero-eyebrow">Nepal's Trusted Healthcare Platform</p>
             <h1>
-              Your Health, <span>Your Schedule</span>
+              Book Doctor<br />Appointments<br />
+              <span className="hero-gradient-text">Instantly, Anytime, Anywhere</span>
             </h1>
             <p>
-              Book appointments with top doctors in just a few clicks. 
-              HealthMandala makes healthcare accessible, simple, and convenient.
+              Connect with verified specialists in seconds. Fast booking, instant confirmation, and care you can trust, built for patients across Nepal.
             </p>
             <div className="hero-buttons">
               <Link to={isLoggedIn && userRole === 'patient' ? '/find-doctors' : '/auth?role=patient&mode=signup'} className="btn btn-primary">Consult Now</Link>

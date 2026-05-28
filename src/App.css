@@ -127,15 +127,32 @@ body {
 
 .hero-text { flex: 1; }
 
+.hero-eyebrow {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+}
+
 .hero-text h1 {
   font-size: 3.6rem;
   color: var(--text-dark);
   margin-bottom: 1.25rem;
-  line-height: 1.15;
+  line-height: 1.1;
   font-weight: 800;
 }
 
 .hero-text h1 span { color: var(--primary-color); }
+
+.hero-gradient-text {
+  background: linear-gradient(90deg, #00a896 0%, #0284c7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: block;
+}
 
 .hero-text p {
   font-size: 1.15rem;

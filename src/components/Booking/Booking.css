@@ -4003,6 +4003,16 @@
   margin: 0 calc(5% + 2rem) !important;
 }
 
+/* Reset empty-state inside selection-section (time/date picker) — must not inherit the booking-container margins */
+.selection-section .empty-state,
+.booking-container .selection-section .empty-state {
+  padding: 2rem !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+
 .empty-state {
   text-align: center;
   padding: 4rem;
